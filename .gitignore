@@ -108,3 +108,7 @@ dist
 
 # macOS
 .DS_Store
+
+# npm is the package manager here; a stray `yarn install` must not
+# reintroduce a second, drifting source of truth.
+yarn.lock
