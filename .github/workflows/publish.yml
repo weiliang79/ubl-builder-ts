@@ -35,7 +35,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # The same gate master runs — called, not copied, so it cannot drift.
+  # The same gate main runs — called, not copied, so it cannot drift.
   ci:
     uses: ./.github/workflows/node.js.yml
 

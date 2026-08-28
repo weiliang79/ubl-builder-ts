@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
   # Lets publish.yml run this exact gate before it releases, so there is one
   # definition of "green" rather than a copy that drifts.
   workflow_call:
