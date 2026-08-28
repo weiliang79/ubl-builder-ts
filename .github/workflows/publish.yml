@@ -8,6 +8,19 @@
 #
 # Nothing here publishes from a branch push. A tag is the only trigger, so a
 # release is always a deliberate act.
+#
+# Authentication is npm trusted publishing (OIDC) — there is no NPM_TOKEN.
+# npm is deprecating 2FA-bypass granular access tokens: they lost their
+# account-management bypass in August 2026 and lose direct publishing around
+# January 2027, after which a token publish only stages a release pending human
+# 2FA approval. OIDC has no such deadline and no long-lived secret to leak.
+#
+# This requires one-time setup at npmjs.com on the package:
+#   Settings -> Trusted Publisher -> GitHub Actions
+#     organization/user   weiliang79
+#     repository          ubl-builder-ts
+#     workflow filename   publish.yml
+# The repository and filename must match exactly or the exchange is refused.
 
 name: Publish
 
@@ -32,7 +45,8 @@ jobs:
 
     permissions:
       contents: read
-      # Required for npm provenance: npm exchanges this for a signed
+      # The whole authentication story. npm exchanges this OIDC token for a
+      # short-lived publish credential, and uses it to sign the provenance
       # attestation linking the tarball to this workflow run.
       id-token: write
 
@@ -41,9 +55,18 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: 24.x
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm >= 11.5.1. Node 24 already ships npm 11,
+      # but pinning it here means a change to the Node version cannot silently
+      # drop below the floor and turn OIDC back into an auth failure.
+      - name: Ensure npm supports trusted publishing
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          npm --version
 
       - run: npm ci
 
@@ -94,7 +117,6 @@ jobs:
         run: npm publish --access public --provenance --tag "$DIST_TAG"
         env:
           DIST_TAG: ${{ steps.disttag.outputs.tag }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Summary
         env:
