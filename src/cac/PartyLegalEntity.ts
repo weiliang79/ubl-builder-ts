@@ -5,6 +5,7 @@ import { Party } from './Party';
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtAmount, UdtCode, UdtDate, UdtIdentifier, UdtIndicator, UdtName, UdtText } from '../datatypes/udt';
 import { CorporateRegistrationScheme } from './CorporateRegistrationScheme';
+import { ShareholderParty } from './ShareholderParty';
 
 // const GenericAggregateComponent = require("./GenericAggregateComponent");
 
@@ -35,6 +36,12 @@ import { CorporateRegistrationScheme } from './CorporateRegistrationScheme';
 // ##################################  TODO CAC MISSING ################################################
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  shareholderParties: {
+    order: 14,
+    attributeName: 'cac:ShareholderParty',
+    max: undefined,
+    classRef: () => ShareholderParty,
+  },
   registrationName: { order: 1, attributeName: 'cbc:RegistrationName', max: 1, classRef: UdtName },
   companyID: { order: 2, attributeName: 'cbc:CompanyID', max: 1, classRef: UdtIdentifier },
   registrationDate: { order: 3, attributeName: 'cbc:RegistrationDate', max: 1, classRef: UdtDate },
@@ -81,6 +88,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A party owning shares in this legal entity. */
+  shareholderParties?: ShareholderParty[];
   /** The registration date of the CompanyID. */
   registrationDate?: string | UdtDate;
   /** The date upon which a registration expires (e.g., registration for an import/export license). */

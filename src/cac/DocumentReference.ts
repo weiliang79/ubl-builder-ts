@@ -8,10 +8,17 @@ import { UdtCode, UdtDate, UdtIdentifier, UdtIndicator, UdtText, UdtTime } from 
 import { Attachment } from './Attachment';
 import { IssuerParty } from './Party';
 import { ValidityPeriod } from './Period';
+import { ResultOfVerification } from './ResultOfVerification';
 
 // const { ValidityPeriod, ValidityPeriodParams } = require("./ValidityPeriod");
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  resultOfVerification: {
+    order: 17,
+    attributeName: 'cac:ResultOfVerification',
+    max: 1,
+    classRef: () => ResultOfVerification,
+  },
   issuerParty: { order: 16, attributeName: 'cac:IssuerParty', max: 1, classRef: () => IssuerParty },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   copyIndicator: { order: 2, attributeName: 'cbc:CopyIndicator', max: 1, classRef: UdtIndicator },
@@ -62,6 +69,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
  * @property {IssuerParty} [issuerParty] - The party who issued the referenced document.
  */
 interface AllowedParams {
+  /** The result of an attempt to verify a signature associated with the referenced document. */
+  resultOfVerification?: ResultOfVerification;
   id: string | UdtIdentifier;
   copyIndicator?: string | UdtIndicator;
   uuid?: UdtIdentifier | string;

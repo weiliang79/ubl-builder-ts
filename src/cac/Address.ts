@@ -5,8 +5,15 @@ import { UdtCode, UdtIdentifier, UdtIdentifierAttributes, UdtName, UdtText } fro
 /* TODO GENERIC CLASSES */
 import { AddressLine } from './AddressLine';
 import { Country } from './Country';
+import { LocationCoordinate } from './LocationCoordinate';
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  locationCoordinates: {
+    order: 27,
+    attributeName: 'cac:LocationCoordinate',
+    max: undefined,
+    classRef: () => LocationCoordinate,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   addressTypeCode: { order: 2, attributeName: 'cbc:AddressTypeCode', max: 1, classRef: UdtCode },
   addressFormatCode: { order: 3, attributeName: 'cbc:AddressFormatCode', max: 1, classRef: UdtCode },
@@ -36,6 +43,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** The geographical coordinates of this address. */
+  locationCoordinates?: LocationCoordinate[];
   /** A mutually agreed code signifying the type of this address. */
   addressTypeCode?: string | UdtCode;
   /** A mutually agreed code signifying the format of this address. */

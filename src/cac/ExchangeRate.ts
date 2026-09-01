@@ -3,6 +3,7 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtCode, UdtDate, UdtIdentifier } from '../datatypes/udt';
 import { UdtRate } from '../datatypes/udt/UdtRate';
+import { ForeignExchangeContract } from './Contract';
 
 // const GenericAggregateComponent = require("./GenericAggregateComponent");
 
@@ -27,6 +28,12 @@ import { UdtRate } from '../datatypes/udt/UdtRate';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  foreignExchangeContract: {
+    order: 9,
+    attributeName: 'cac:ForeignExchangeContract',
+    max: 1,
+    classRef: () => ForeignExchangeContract,
+  },
   sourceCurrencyCode: { order: 1, attributeName: 'cbc:SourceCurrencyCode', max: 1, classRef: UdtCode },
   sourceCurrencyBaseRate: { order: 2, attributeName: 'cbc:SourceCurrencyBaseRate', max: 1, classRef: UdtRate },
   targetCurrencyCode: { order: 3, attributeName: 'cbc:TargetCurrencyCode', max: 1, classRef: UdtCode },
@@ -45,6 +52,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A contract for foreign exchange. */
+  foreignExchangeContract?: ForeignExchangeContract;
   sourceCurrencyCode: string | UdtCode;
   sourceCurrencyBaseRate?: string | UdtRate;
   targetCurrencyCode: string | UdtCode;

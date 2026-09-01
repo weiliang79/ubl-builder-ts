@@ -9,6 +9,9 @@ import { PartyLegalEntity } from './PartyLegalEntity';
 import { PartyName } from './PartyName';
 import { PartyTaxScheme, PartyTaxSchemeParams } from './PartyTaxScheme';
 import { PayeeFinancialAccount } from './PayeeFinancialAccount';
+import { Person } from './Person';
+import { PowerOfAttorney } from './PowerOfAttorney';
+import { ServiceProviderParty } from './ServiceProviderParty';
 
 /*
     cbc:MarkCareIndicator [0..1]    An indicator that this party is "care of" (c/o) (true) or not (false).
@@ -33,6 +36,19 @@ import { PayeeFinancialAccount } from './PayeeFinancialAccount';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  persons: { order: 15, attributeName: 'cac:Person', max: undefined, classRef: () => Person },
+  serviceProviderParties: {
+    order: 17,
+    attributeName: 'cac:ServiceProviderParty',
+    max: undefined,
+    classRef: () => ServiceProviderParty,
+  },
+  powerOfAttorneys: {
+    order: 18,
+    attributeName: 'cac:PowerOfAttorney',
+    max: undefined,
+    classRef: () => PowerOfAttorney,
+  },
   financialAccount: { order: 19, attributeName: 'cac:FinancialAccount', max: 1, classRef: () => PayeeFinancialAccount },
   agentParty: { order: 16, attributeName: 'cac:AgentParty', max: 1, classRef: () => Party },
   markCareIndicator: { order: 1, attributeName: 'cbc:MarkCareIndicator', max: 1, classRef: UdtIndicator },
@@ -87,6 +103,12 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A person associated with this party. */
+  persons?: Person[];
+  /** A party providing a service to this party. */
+  serviceProviderParties?: ServiceProviderParty[];
+  /** A power of attorney associated with this party. */
+  powerOfAttorneys?: PowerOfAttorney[];
   /** The financial account associated with this party. */
   financialAccount?: PayeeFinancialAccount;
   /** A party who acts as an agent for this party. */

@@ -134,6 +134,20 @@ invoice
 Five element aliases came with them: `PayeeParty`, `BuyerCustomerParty`,
 `SellerSupplierParty`, `TaxExchangeRate` and `PaymentAlternativeExchangeRate`.
 
+### Every UBL 2.1 aggregate component
+
+The package had 51 of the 109 complex types UBL 2.1 defines, which left 31
+child elements with no class to put in them — `cac:Person` on a party,
+`cac:CardAccount` on payment means, `cac:Dimension` on an item,
+`cac:Consignment` and the rest of the transport tree on a shipment.
+
+All 109 are present now, written from the schema by `npm run scaffold` and held
+to it by the same three checks as the rest. `npm run report:schema` reports no
+missing elements for the first time.
+
+Nothing that exists changes: every new component is a new class, and every new
+child is optional.
+
 ### Seven components became reachable
 
 `Attachment`, `CommodityClassification`, `ExternalReference`,

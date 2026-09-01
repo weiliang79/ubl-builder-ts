@@ -63,6 +63,7 @@
     "generate:cac": "ts-node --project tsconfig.json scripts/generator/emit.ts",
     "check:schema": "ts-node --project tsconfig.json scripts/generator/emit.ts --check",
     "generate:complete": "ts-node --project tsconfig.json scripts/generator/complete.ts",
+    "scaffold": "ts-node --project tsconfig.json scripts/generator/scaffold.ts",
     "check:types": "ts-node --project tsconfig.json scripts/generator/checkTypes.ts",
     "check:classref": "ts-node --project tsconfig.json scripts/generator/checkClassRef.ts"
   },

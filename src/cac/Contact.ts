@@ -1,5 +1,6 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtIdentifier, UdtName, UdtText } from '../datatypes/udt';
+import { OtherCommunication } from './Communication';
 
 /*
 
@@ -14,6 +15,12 @@ import { UdtIdentifier, UdtName, UdtText } from '../datatypes/udt';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  otherCommunications: {
+    order: 7,
+    attributeName: 'cac:OtherCommunication',
+    max: undefined,
+    classRef: () => OtherCommunication,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   name: { order: 2, attributeName: 'cbc:Name', max: 1, classRef: UdtName },
   telephone: { order: 3, attributeName: 'cbc:Telephone', max: 1, classRef: UdtText },
@@ -25,6 +32,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** Another means of communication with this contact. */
+  otherCommunications?: OtherCommunication[];
   /** An identifier for this contact */
   id?: string | UdtIdentifier;
   /** The name of this contact. It is recommended that this be used for a functional name and not a personal name */
