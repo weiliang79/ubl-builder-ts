@@ -103,23 +103,23 @@ type AllowedParams = {
   exchangeRate?: ExchangeRate;
   /** The period during which these payment terms are valid. */
   validityPeriod?: EstimatedDeliveryPeriod;
-  id: string | UdtIdentifier;
-  paymentMeansIDs: string[] | UdtIdentifier[];
-  prepaidPaymentReferenceID: string | UdtIdentifier;
-  notes: string | UdtText;
-  referenceEventCode: string | UdtCode;
-  settlementDiscountPercent: string | UdtCode;
-  penaltySurchargePercent: string | UdtPercent;
-  paymentPercent: string | UdtPercent;
-  amount: string | UdtAmount;
-  settlementDiscountAmount: string | UdtAmount;
-  penaltyAmount: string | UdtAmount;
-  PaymentTermsDetailsURI: string | UdtIdentifier;
-  paymentDueDate: string | UdtDate;
-  installmentDueDate: string | UdtDate;
+  id?: string | UdtIdentifier;
+  paymentMeansIDs?: string[] | UdtIdentifier[];
+  prepaidPaymentReferenceID?: string | UdtIdentifier;
+  notes?: string | UdtText;
+  referenceEventCode?: string | UdtCode;
+  settlementDiscountPercent?: string | UdtCode;
+  penaltySurchargePercent?: string | UdtPercent;
+  paymentPercent?: string | UdtPercent;
+  amount?: string | UdtAmount;
+  settlementDiscountAmount?: string | UdtAmount;
+  penaltyAmount?: string | UdtAmount;
+  PaymentTermsDetailsURI?: string | UdtIdentifier;
+  paymentDueDate?: string | UdtDate;
+  installmentDueDate?: string | UdtDate;
   // invoicingPartyReference: ,
-  settlementPeriod: string | PeriodType;
-  penaltyPeriod: string | PeriodType;
+  settlementPeriod?: string | PeriodType;
+  penaltyPeriod?: string | PeriodType;
 
   invoicingPartyReference?: string | UdtText;
 };

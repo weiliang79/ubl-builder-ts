@@ -37,11 +37,11 @@ type AllowedParams = {
   originalDocumentReference?: DocumentReference;
   /** An identifier for this signature. */
   name: string | UdtIdentifier;
-  notes: string[] | UdtText[];
-  validationDate: string | UdtDate;
-  validationTime: string | UdtTime;
-  validatorID: string | UdtIdentifier;
-  canonicalizationMethod: string | UdtText;
+  notes?: string[] | UdtText[];
+  validationDate?: string | UdtDate;
+  validationTime?: string | UdtTime;
+  validatorID?: string | UdtIdentifier;
+  canonicalizationMethod?: string | UdtText;
 };
 
 class Signature extends GenericAggregateComponent {

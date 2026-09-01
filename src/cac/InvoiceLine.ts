@@ -130,7 +130,7 @@ type AllowedParams = {
   id: string | UdtIdentifier; // Mandatory
   uuid?: string | UdtIdentifier;
   notes?: string[] | UdtText[];
-  invoicedQuantity: string | UdtQuantity; // Mandatory
+  invoicedQuantity?: string | UdtQuantity; // Mandatory
   lineExtensionAmount: string | UdtAmount; // Mandatory
   taxPointDate?: string | UdtDate;
   accountingCostCode?: string | UdtCode;
@@ -151,7 +151,7 @@ type AllowedParams = {
   taxTotals?: TaxTotal[];
   withholdingTaxTotal?: WithholdingTaxTotal[];
   item: Item; // Mandatory
-  price: Price; // Mandatory
+  price?: Price; // Mandatory
   deliveryTerms?: DeliveryTerms;
   // subInvoiceLine: "",
   itemPriceExtension?: ItemPriceExtension;

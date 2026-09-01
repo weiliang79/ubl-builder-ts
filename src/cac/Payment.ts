@@ -21,12 +21,12 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  id: string | UdtIdentifier;
-  paidAmount: string | UdtAmount;
-  receivedDate: string | UdtDate;
-  paidDate: string | UdtDate;
-  paidTime: string | UdtTime;
-  instructionID: string | UdtIdentifier;
+  id?: string | UdtIdentifier;
+  paidAmount?: string | UdtAmount;
+  receivedDate?: string | UdtDate;
+  paidDate?: string | UdtDate;
+  paidTime?: string | UdtTime;
+  instructionID?: string | UdtIdentifier;
 };
 
 /**

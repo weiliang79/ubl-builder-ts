@@ -28,9 +28,9 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 type AllowedParams = {
   /** The previous price list. */
   previousPriceList?: PriceList;
-  id: string | UdtIdentifier;
-  statusCode: string | UdtCode;
-  validityPeriods: ValidityPeriod;
+  id?: string | UdtIdentifier;
+  statusCode?: string | UdtCode;
+  validityPeriods?: ValidityPeriod;
 };
 
 /**

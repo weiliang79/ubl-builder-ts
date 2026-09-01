@@ -32,10 +32,10 @@ const ParamsMap = {
 
 type AllowedParams = {
   lineID: string | UdtIdentifier;
-  salesOrderLineID: string | UdtIdentifier;
-  uuid: string | UdtIdentifier;
-  lineStatusCode: string | UdtIdentifier;
-  orderReference: OrderReference;
+  salesOrderLineID?: string | UdtIdentifier;
+  uuid?: string | UdtIdentifier;
+  lineStatusCode?: string | UdtIdentifier;
+  orderReference?: OrderReference;
 };
 
 /**

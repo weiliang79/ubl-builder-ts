@@ -45,7 +45,7 @@ type AllowedParams = {
   /** Text describing the supplier's ability to send invoice data via a purchase card provider (e.g., VISA, MasterCard, American Express). */
   dataSendingCapability?: string | UdtText;
   /** The supplier party itself. */
-  party: Party;
+  party?: Party;
 };
 
 class AccountingSupplierParty extends GenericAggregateComponent {

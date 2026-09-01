@@ -91,22 +91,22 @@ type AllowedParams = {
   /** An allowance or charge associated with this debit note. */
   allowanceCharges?: AllowanceCharge[];
   id: string | UdtIdentifier;
-  uuid: string | UdtIdentifier;
-  notes: string | UdtText;
-  debitedQuantity: string | UdtQuantity;
+  uuid?: string | UdtIdentifier;
+  notes?: string | UdtText;
+  debitedQuantity?: string | UdtQuantity;
   lineExtensionAmount: string | UdtAmount;
-  taxPointDate: string | UdtDate;
-  accountingCostCode: string | UdtCode;
-  accountingCost: string | UdtText;
-  paymentPurposeCode: string | UdtCode;
-  despatchLineReferences: DespatchLineReference[];
-  receiptLineReferences: ReceiptLineReference[];
-  billingReferences: BillingReference[];
-  documentReferences: DocumentReference[];
-  deliveries: Delivery[];
-  taxTotals: TaxTotal[];
-  item: Item;
-  price: Price;
+  taxPointDate?: string | UdtDate;
+  accountingCostCode?: string | UdtCode;
+  accountingCost?: string | UdtText;
+  paymentPurposeCode?: string | UdtCode;
+  despatchLineReferences?: DespatchLineReference[];
+  receiptLineReferences?: ReceiptLineReference[];
+  billingReferences?: BillingReference[];
+  documentReferences?: DocumentReference[];
+  deliveries?: Delivery[];
+  taxTotals?: TaxTotal[];
+  item?: Item;
+  price?: Price;
 };
 
 /**

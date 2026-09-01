@@ -13,7 +13,7 @@ type AllowedParams = {
   name?: string | UdtName;
   /** The address of this financial institution. */
   address?: PostalAddress;
-  id: string | UdtIdentifier;
+  id?: string | UdtIdentifier;
 };
 
 /**

@@ -23,7 +23,7 @@ type AllowedParams = {
   cargoTypeCode?: string | UdtCode;
   /** The harmonized international commodity code for cross border and regulatory (customs and trade statistics) purposes. */
   commodityCode?: string | UdtCode;
-  itemClassificationCode: string | UdtCode;
+  itemClassificationCode?: string | UdtCode;
 };
 
 class CommodityClassification extends GenericAggregateComponent {

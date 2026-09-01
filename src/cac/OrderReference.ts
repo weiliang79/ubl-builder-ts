@@ -21,7 +21,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
 type AllowedParams = {
   /** An identifier for this order reference, assigned by the buyer */
-  id?: string | UdtIdentifier;
+  id: string | UdtIdentifier;
   salesOrderID?: string | UdtIdentifier;
   /** Indicates whether the referenced Order is a copy (true) or the original (false) */
   copyIndicator?: string | boolean | UdtIndicator;

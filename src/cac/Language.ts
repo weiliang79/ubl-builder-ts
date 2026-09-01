@@ -9,11 +9,11 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
 type AllowedParams = {
   /** An identifier for this language */
-  id: UdtIdentifier | string;
+  id?: UdtIdentifier | string;
   /** The name of this language */
-  name: UdtName | string;
+  name?: UdtName | string;
   /**  A code signifying the locale in which this language is used */
-  localeCode: UdtCode | string;
+  localeCode?: UdtCode | string;
 };
 
 class Language extends GenericAggregateComponent {

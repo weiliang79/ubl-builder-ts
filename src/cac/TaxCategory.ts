@@ -44,7 +44,7 @@ type AllowedParams = {
   taxExemptionReason?: string | UdtText;
   tierRange?: string | UdtText;
   tierRatePercent?: string | UdtPercent;
-  taxScheme?: TaxScheme;
+  taxScheme: TaxScheme;
 };
 
 /**

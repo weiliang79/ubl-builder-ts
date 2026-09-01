@@ -81,6 +81,51 @@ function readEntries(source: string): { entries: Entry[]; bodyStart: number; bod
   return entries.length ? { entries, bodyStart, bodyEnd } : null;
 }
 
+/** Offsets of the `{ … }` body opened by `open`, by brace depth. */
+function bodyBounds(source: string, open: RegExp): { start: number; end: number } | null {
+  const m = open.exec(source);
+  if (!m) return null;
+  const start = (m.index as number) + m[0].length;
+  let depth = 1;
+  let i = start;
+  for (; i < source.length && depth > 0; i += 1) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}') depth -= 1;
+  }
+  return { start, end: i - 1 };
+}
+
+/**
+ * Align AllowedParams optionality with the schema.
+ *
+ * These were transcribed by hand and drifted badly: 193 fields were declared
+ * required where UBL says minOccurs="0". That is type-level only — assignContent
+ * skips undefined — but it forces callers to pass elements they do not want,
+ * and it made three of the four self-referential children unusable without a
+ * cast. Four fields drift the other way and are genuinely mandatory, so they
+ * tighten: an AddressLine with no cbc:Line, or a TaxCategory with no
+ * cac:TaxScheme, serialises to schema-invalid XML.
+ *
+ * D8 says cac/ stays exactly as permissive as UBL. That cuts both ways.
+ */
+function alignOptionality(source: string, want: Map<string, boolean>): { source: string; changes: string[] } {
+  const bounds = bodyBounds(source, /type AllowedParams\s*=\s*\{/);
+  if (!bounds) return { source, changes: [] };
+
+  const changes: string[] = [];
+  const body = source.slice(bounds.start, bounds.end);
+  const rebuilt = body.replace(/^(\s{2})(\w+)(\??):/gm, (whole, indent: string, key: string, q: string) => {
+    const optional = want.get(key);
+    if (optional === undefined) return whole; // not in the params map; leave alone
+    const isOptional = q === '?';
+    if (isOptional === optional) return whole;
+    changes.push(`${key}: ${isOptional ? 'optional -> required' : 'required -> optional'}`);
+    return `${indent}${key}${optional ? '?' : ''}:`;
+  });
+
+  return { source: source.slice(0, bounds.start) + rebuilt + source.slice(bounds.end), changes };
+}
+
 const local = (name: string) => name.trim().split(':').pop() as string;
 const capitalize = (key: string) => key.charAt(0).toUpperCase() + key.slice(1);
 
@@ -145,6 +190,7 @@ function main(): void {
     const taken = new Set<string>();
     const changes: string[] = [];
     const edits: { start: number; end: number; text: string }[] = [];
+    const wantOptional = new Map<string, boolean>();
 
     parsed.entries.forEach((entry) => {
       const child = matchChild(entry, type.children, taken);
@@ -153,6 +199,7 @@ function main(): void {
 
       const max = child.maxOccurs === null ? 'undefined' : String(child.maxOccurs);
       const order = String(type.children.indexOf(child) + 1);
+      wantOptional.set(entry.key, child.minOccurs === 0);
 
       if (entry.name !== child.name) changes.push(`${entry.key}: name '${entry.name}' -> '${child.name}'`);
       if (entry.max !== max) changes.push(`${entry.key}: max ${entry.max} -> ${max}`);
@@ -170,11 +217,6 @@ function main(): void {
       edits.push({ start: entry.start, end: entry.end, text });
     });
 
-    if (changes.length === 0) return;
-    corrected += changes.length;
-    filesChanged += 1;
-    console.log(`\n${file}`);
-    changes.forEach((c) => console.log(`    ${c}`));
     const body = source.slice(parsed.bodyStart, parsed.bodyEnd);
     let rebuiltBody = '';
     let cursor = 0;
@@ -183,8 +225,19 @@ function main(): void {
       cursor = edit.end;
     });
     rebuiltBody += body.slice(cursor);
+    let next = source.slice(0, parsed.bodyStart) + rebuiltBody + source.slice(parsed.bodyEnd);
 
-    if (write) writeFileSync(path, source.slice(0, parsed.bodyStart) + rebuiltBody + source.slice(parsed.bodyEnd));
+    const optionality = alignOptionality(next, wantOptional);
+    next = optionality.source;
+    changes.push(...optionality.changes);
+
+    if (changes.length === 0) return;
+    corrected += changes.length;
+    filesChanged += 1;
+    console.log(`\n${file}`);
+    changes.forEach((c) => console.log(`    ${c}`));
+
+    if (write) writeFileSync(path, next);
   });
 
   console.log(`\n${'='.repeat(64)}`);

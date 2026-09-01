@@ -12,13 +12,12 @@ import { AlternativeDeliveryLocation, CreditNoteLine, Party, PriceList } from '.
  * alias rather than the declared class, fails at runtime and only when someone
  * actually sets the child.
  *
- * The casts below are incidental. CreditNoteLine, Location and PriceList mark
- * most of their AllowedParams fields required even though UBL leaves them
- * optional — CreditNoteLine demands 23 of them. That is a separate defect;
- * assignContent skips undefined at runtime, so omitting them is safe, and the
- * casts keep this file about the lazy classRef rather than about that.
+ * These construct with no casts, which is itself the assertion: until the
+ * AllowedParams optionality was aligned with the schema, CreditNoteLine
+ * required 23 fields and three of these four children could not be set from
+ * typed code at all. `id` below is supplied because cbc:ID really is
+ * minOccurs="1" on a credit note line.
  */
-type Args<T extends abstract new (...a: never[]) => unknown> = ConstructorParameters<T>[0];
 describe('self-referential children', () => {
   it('nests a Party inside a Party through cac:AgentParty', () => {
     const party = new Party({ agentParty: new Party({}) });
@@ -26,22 +25,19 @@ describe('self-referential children', () => {
   });
 
   it('nests a CreditNoteLine inside a CreditNoteLine', () => {
-    const empty = {} as Args<typeof CreditNoteLine>;
-    const line = new CreditNoteLine({ subCreditNoteLines: [new CreditNoteLine(empty)] } as Args<typeof CreditNoteLine>);
+    const line = new CreditNoteLine({ id: '1', subCreditNoteLines: [new CreditNoteLine({ id: '2' })] });
     expect(line.parseToJson()['cac:SubCreditNoteLine']).toHaveLength(1);
   });
 
   it('nests a PriceList inside a PriceList', () => {
-    const empty = {} as Args<typeof PriceList>;
-    const list = new PriceList({ previousPriceList: new PriceList(empty) } as Args<typeof PriceList>);
+    const list = new PriceList({ previousPriceList: new PriceList({}) });
     expect(list.parseToJson()['cac:PreviousPriceList']).toBeDefined();
   });
 
   it('nests a Location inside a Location, reached through an export alias', () => {
-    const empty = {} as Args<typeof AlternativeDeliveryLocation>;
     const location = new AlternativeDeliveryLocation({
-      subsidiaryLocations: [new AlternativeDeliveryLocation(empty)],
-    } as Args<typeof AlternativeDeliveryLocation>);
+      subsidiaryLocations: [new AlternativeDeliveryLocation({})],
+    });
     expect(location.parseToJson()['cac:SubsidiaryLocation']).toHaveLength(1);
   });
 

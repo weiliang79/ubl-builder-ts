@@ -33,8 +33,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  taxExclusiveAmount: string | UdtAmount;
-  taxInclusiveAmount: string | UdtAmount;
+  taxExclusiveAmount?: string | UdtAmount;
+  taxInclusiveAmount?: string | UdtAmount;
   payableAmount: string | UdtAmount;
   lineExtensionAmount?: string | UdtAmount;
   allowanceTotalAmount?: string | UdtAmount;

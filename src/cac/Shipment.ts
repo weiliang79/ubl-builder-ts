@@ -173,26 +173,26 @@ type AllowedParams = {
   /** A cost incurred by the shipper in moving goods, by whatever means, from one place to another under the terms of the contract of carriage. In addition to transport costs, this may include such elements as packing, documentation, loading, unloading, and insurance to the extent that they relate to the freight costs. */
   freightAllowanceCharges?: AllowanceCharge[];
   id: string | UdtIdentifier;
-  shippingPriorityLevelCode: string | UdtCode;
-  handlingCode: string | UdtCode;
-  handlingInstructions: string | UdtText;
-  informations: string | UdtText;
-  grossWeightMeasure: string | UdtMeasure;
-  netWeightMeasure: string | UdtMeasure;
-  netNetWeightMeasure: string | UdtMeasure;
-  grossVolumeMeasure: string | UdtMeasure;
-  netVolumeMeasure: string | UdtMeasure;
-  totalGoodsItemQuantity: string | UdtQuantity;
-  TotalTransportHandlingUnitQuantity: string | UdtQuantity;
-  InsuranceValueAmount: string | UdtAmount;
-  DeclaredCustomsValueAmount: string | UdtAmount;
-  DeclaredForCarriageValueAmount: string | UdtAmount;
-  DeclaredStatisticsValueAmount: string | UdtAmount;
-  FreeOnBoardValueAmount: string | UdtAmount;
-  SpecialInstructions: string | UdtText;
-  DeliveryInstructions: string | UdtText;
-  SplitConsignmentIndicator: string | UdtIndicator;
-  ConsignmentQuantity: string | UdtQuantity;
+  shippingPriorityLevelCode?: string | UdtCode;
+  handlingCode?: string | UdtCode;
+  handlingInstructions?: string | UdtText;
+  informations?: string | UdtText;
+  grossWeightMeasure?: string | UdtMeasure;
+  netWeightMeasure?: string | UdtMeasure;
+  netNetWeightMeasure?: string | UdtMeasure;
+  grossVolumeMeasure?: string | UdtMeasure;
+  netVolumeMeasure?: string | UdtMeasure;
+  totalGoodsItemQuantity?: string | UdtQuantity;
+  TotalTransportHandlingUnitQuantity?: string | UdtQuantity;
+  InsuranceValueAmount?: string | UdtAmount;
+  DeclaredCustomsValueAmount?: string | UdtAmount;
+  DeclaredForCarriageValueAmount?: string | UdtAmount;
+  DeclaredStatisticsValueAmount?: string | UdtAmount;
+  FreeOnBoardValueAmount?: string | UdtAmount;
+  SpecialInstructions?: string | UdtText;
+  DeliveryInstructions?: string | UdtText;
+  SplitConsignmentIndicator?: string | UdtIndicator;
+  ConsignmentQuantity?: string | UdtQuantity;
 };
 
 /**

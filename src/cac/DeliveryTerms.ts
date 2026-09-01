@@ -37,12 +37,12 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  id: string | UdtIdentifier;
-  specialTerms: string[] | UdtText[];
-  lossRiskResponsibilityCode: string | UdtCode;
-  lossRisks: string[] | UdtText[];
-  amount: string | UdtAmount;
-  deliveryLocation: DeliveryLocation;
+  id?: string | UdtIdentifier;
+  specialTerms?: string[] | UdtText[];
+  lossRiskResponsibilityCode?: string | UdtCode;
+  lossRisks?: string[] | UdtText[];
+  amount?: string | UdtAmount;
+  deliveryLocation?: DeliveryLocation;
   // allowanceCharge: ""
 };
 

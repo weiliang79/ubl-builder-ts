@@ -52,16 +52,16 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 type AllowedParams = {
   /** A location subsidiary to this location. */
   subsidiaryLocations?: LocationType[];
-  id: string | UdtIdentifier;
-  description: string | UdtText;
-  conditions: string | UdtText;
-  countrySubentity: string | UdtText;
-  countrySubentityCode: string | UdtCode;
-  locationTypeCode: string | UdtCode;
-  informationURI: string | UdtIdentifier;
-  name: string | UdtName;
-  validityPeriod: string | ValidityPeriod;
-  address: string | Address;
+  id?: string | UdtIdentifier;
+  description?: string | UdtText;
+  conditions?: string | UdtText;
+  countrySubentity?: string | UdtText;
+  countrySubentityCode?: string | UdtCode;
+  locationTypeCode?: string | UdtCode;
+  informationURI?: string | UdtIdentifier;
+  name?: string | UdtName;
+  validityPeriod?: string | ValidityPeriod;
+  address?: string | Address;
 };
 
 /**

@@ -35,7 +35,7 @@ type AllowedParams = {
   paymentNotes?: string | UdtText[];
   /** The country in which the holder of the financial account is domiciled. */
   country?: Country;
-  id: string | UdtIdentifier;
+  id?: string | UdtIdentifier;
   financialInstitutionBranch?: FinancialInstitutionBranch;
 };
 

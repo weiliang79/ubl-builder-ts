@@ -129,31 +129,31 @@ type AllowedParams = {
   /** The price extension, calculated by multiplying the price per unit by the quantity of items on this credit note line. */
   itemPriceExtension?: ItemPriceExtension;
   id: string | UdtIdentifier;
-  uuid: string | UdtIdentifier;
-  notes: string[] | UdtText[];
-  creditedQuantity: string | UdtQuantity;
-  lineExtensionAmount: string | UdtAmount;
-  taxPointDate: string | UdtDate;
-  accountingCostCode: string | UdtCode;
-  accountingCost: string | UdtAmount;
-  paymentPurposeCode: string | UdtCode;
-  freeOfChargeIndicator: string | UdtIndicator;
-  invoicePeriods: PeriodType[];
-  orderLineReferences: OrderLineReference[];
+  uuid?: string | UdtIdentifier;
+  notes?: string[] | UdtText[];
+  creditedQuantity?: string | UdtQuantity;
+  lineExtensionAmount?: string | UdtAmount;
+  taxPointDate?: string | UdtDate;
+  accountingCostCode?: string | UdtCode;
+  accountingCost?: string | UdtAmount;
+  paymentPurposeCode?: string | UdtCode;
+  freeOfChargeIndicator?: string | UdtIndicator;
+  invoicePeriods?: PeriodType[];
+  orderLineReferences?: OrderLineReference[];
   // DiscrepancyResponses: ,
-  despatchLineReferences: DespatchLineReference[];
-  receiptLineReferences: ReceiptLineReference[];
-  billingReferences: BillingReference[];
-  documentReferences: DocumentReference[];
+  despatchLineReferences?: DespatchLineReference[];
+  receiptLineReferences?: ReceiptLineReference[];
+  billingReferences?: BillingReference[];
+  documentReferences?: DocumentReference[];
   // PricingReference: '',
-  originatorParty: Party[];
-  deliveries: Delivery[];
-  paymentTerms: PaymentTerms[];
-  taxTotals: TaxTotal[];
+  originatorParty?: Party[];
+  deliveries?: Delivery[];
+  paymentTerms?: PaymentTerms[];
+  taxTotals?: TaxTotal[];
   // allowanceCharges: '',
-  item: Item;
-  price: Price;
-  deliveryTerms: DeliveryTerms[];
+  item?: Item;
+  price?: Price;
+  deliveryTerms?: DeliveryTerms[];
 };
 
 /**
