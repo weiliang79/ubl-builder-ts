@@ -108,9 +108,10 @@ export default class Invoice {
    * byte-identical: the namespace declarations and xsi:schemaLocation are part
    * of the document, not something the profile re-derives.
    *
-   * An element this library cannot represent is reported, never dropped. 32
-   * UBL children still have no component class, and a document carrying one
-   * would otherwise lose it silently on the way through.
+   * An element this library cannot represent, or one that appears more often
+   * than UBL allows, is reported rather than dropped. 32 UBL children still
+   * have no component class, and a document carrying one would otherwise lose
+   * it silently on the way through.
    */
   static fromXml(xml: string): Invoice {
     return Invoice.fromParsed(parseXml(xml));
@@ -132,10 +133,10 @@ export default class Invoice {
     const invoice = new Invoice();
     Object.entries(root.attributes).forEach(([key, value]) => invoice.addProperty(key, value));
 
-    const unknown: string[] = [];
-    const params = paramsFrom(root, INVOICE_CHILDREN_MAP, root.name, unknown);
-    if (unknown.length) {
-      throw new Error(`Invoice cannot represent: ${unknown.join(', ')}`);
+    const problems: string[] = [];
+    const params = paramsFrom(root, INVOICE_CHILDREN_MAP, root.name, problems);
+    if (problems.length) {
+      throw new Error(`this document cannot be read: ${problems.join('; ')}`);
     }
 
     Object.entries(params).forEach(([key, value]) => {

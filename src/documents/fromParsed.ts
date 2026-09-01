@@ -73,11 +73,11 @@ function paramsMapOf(classRef: unknown): IGenericKeyValue<ChildEntry> {
  * reach that; a parser handing down the tree it just read would have walked
  * straight into it.
  */
-function buildValue(element: ParsedElement, entry: ChildEntry, path: string, unknown: string[]): unknown {
+function buildValue(element: ParsedElement, entry: ChildEntry, path: string, problems: string[]): unknown {
   const classRef = resolveClassRef(entry.classRef) as Constructor;
 
   if (isComponent(classRef)) {
-    return new classRef(paramsFrom(element, paramsMapOf(classRef), path, unknown));
+    return new classRef(paramsFrom(element, paramsMapOf(classRef), path, problems));
   }
   return new classRef(element.value ?? '', element.attributes);
 }
@@ -85,15 +85,15 @@ function buildValue(element: ParsedElement, entry: ChildEntry, path: string, unk
 /**
  * Build the params object for `element`, given the map that describes it.
  *
- * Unknown children are collected rather than dropped: a document carrying an
- * element this library cannot represent should say so, not quietly lose it on
- * the way through.
+ * Children this cannot place are collected rather than dropped — an element
+ * with no entry in the map, or a second occurrence of one UBL allows once.
+ * Either way the document loses a value, and the caller is told which.
  */
 export function paramsFrom(
   element: ParsedElement,
   map: IGenericKeyValue<ChildEntry>,
   path: string,
-  unknown: string[],
+  problems: string[],
 ): Record<string, unknown> {
   const byLocalName = new Map<string, { key: string; entry: ChildEntry }>();
   Object.entries(map).forEach(([key, entry]) => byLocalName.set(localName(elementNameOf(entry)), { key, entry }));
@@ -103,12 +103,12 @@ export function paramsFrom(
   element.children.forEach((child) => {
     const match = byLocalName.get(localName(child.name));
     if (!match) {
-      unknown.push(`${path}/${child.name}`);
+      problems.push(`${path}/${child.name} has no place in this document`);
       return;
     }
 
     const { key, entry } = match;
-    const value = buildValue(child, entry, `${path}/${child.name}`, unknown);
+    const value = buildValue(child, entry, `${path}/${child.name}`, problems);
 
     // Arity comes from the map, never from the document: one occurrence of a
     // repeatable element is indistinguishable from a single-valued one, and
@@ -118,9 +118,18 @@ export function paramsFrom(
       const existing = (params[key] as unknown[]) ?? [];
       existing.push(value);
       params[key] = existing;
-    } else {
-      params[key] = value;
+      return;
     }
+
+    // A second occurrence of a single-valued element used to overwrite the
+    // first, so a malformed document lost a value on the way through and said
+    // nothing. Reported for the same reason an unrepresentable element is:
+    // the caller can decide what to do about it, and silence cannot.
+    if (key in params) {
+      problems.push(`${path}/${child.name} appears more than once, and UBL allows one`);
+      return;
+    }
+    params[key] = value;
   });
 
   return params;

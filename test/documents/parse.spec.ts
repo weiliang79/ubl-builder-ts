@@ -62,7 +62,39 @@ describe('reading a document back', () => {
     // the way through is the failure this whole series has been removing.
     const withUnknown = xml.replace('<cbc:IssueDate>', '<cbc:NotAUblElement>x</cbc:NotAUblElement><cbc:IssueDate>');
 
-    expect(() => Invoice.fromXml(withUnknown)).toThrow(/cannot represent.*NotAUblElement/);
+    expect(() => Invoice.fromXml(withUnknown)).toThrow(/NotAUblElement has no place/);
+  });
+
+  it('reports a single-valued element that appears twice', () => {
+    // The second used to overwrite the first, so a malformed document lost a
+    // value here and said nothing about it.
+    const twice = xml.replace(
+      '<cbc:IssueDate>2026-07-02</cbc:IssueDate>',
+      '<cbc:IssueDate>2026-07-02</cbc:IssueDate><cbc:IssueDate>2026-07-03</cbc:IssueDate>',
+    );
+
+    expect(() => Invoice.fromXml(twice)).toThrow(/IssueDate appears more than once/);
+  });
+
+  it('round-trips a document that arrives pretty-printed', () => {
+    // Element text is kept exactly as it arrives, whitespace included, which
+    // is what byte-identity means for a document whose hash is computed over
+    // its bytes. A container's text is never read — that would flatten every
+    // descendant's text into the parent.
+    expect(Invoice.fromXml(Invoice.fromXml(xml).getXml(true, true)).getXml(false, true)).toBe(xml);
+  });
+
+  it('round-trips ext:UBLExtensions', () => {
+    // The one child whose subtree is free-form, and the one whose constructor
+    // reset its own contents to [] immediately after storing them.
+    const extensions =
+      '<ext:UBLExtensions><ext:UBLExtension><ext:ExtensionURI>urn:x</ext:ExtensionURI></ext:UBLExtension></ext:UBLExtensions>';
+    const cbc = 'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"';
+    const withExtensions = xml
+      .replace('<cbc:ID>', `${extensions}<cbc:ID>`)
+      .replace(cbc, `${cbc} xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"`);
+
+    expect(Invoice.fromXml(withExtensions).getXml(false, true)).toBe(withExtensions);
   });
 
   it('rejects a document with no single root', () => {
