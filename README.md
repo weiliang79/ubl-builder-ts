@@ -58,6 +58,24 @@ For submission, `getXml(false, true)` gives the headless single-line form whose
 bytes the MyInvois `documentHash` is computed over. `getJson()` renders the
 same document as UBL JSON.
 
+## Reading a document back
+
+`Invoice.fromXml` and `Invoice.fromJson` are the inverses. Both rebuild the
+document from the same tables that write one, so a document read back renders
+byte for byte as it arrived:
+
+```ts
+const invoice = Invoice.fromXml(receivedXml);
+invoice.setDueDate('2026-08-01');
+console.log(invoice.getXml(false, true));
+```
+
+An element this library cannot represent throws rather than being dropped —
+32 UBL children still have no component class, and losing one in transit is
+worse than refusing the document. The UBL JSON form carries only the four
+namespaces it hoists to `_D` / `_A` / `_B` / `_E`, so a document that reaches
+you as JSON has whatever others it once had already gone.
+
 ## Entry points
 
 The root import re-exports everything. Subpaths are narrower:

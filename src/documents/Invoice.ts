@@ -73,9 +73,11 @@ import {
 } from '../datatypes/udt';
 
 import { IGenericKeyValue } from '../core/GenericAggregateComponent';
+import { ParsedElement, parseUblJson, parseXml } from '../core/parse';
 import { toUblJson, toXmlString, UblJsonNamespaces } from '../core/serialize';
 import { NodeSource, XmlNode } from '../core/xmlNode';
 import { INVOICE_CHILDREN_MAP } from './ChildrenMap';
+import { paramsFrom } from './fromParsed';
 
 export default class Invoice {
   /** Attributes on the Invoice root element — namespace declarations and the like. */
@@ -93,6 +95,55 @@ export default class Invoice {
    */
   constructor(id?: string) {
     if (id !== undefined) this.setID(id);
+  }
+
+  /**
+   * Read an invoice back from XML.
+   *
+   * The inverse of {@link getXml}. Children are matched against
+   * INVOICE_CHILDREN_MAP and assigned through the same path a caller's setter
+   * uses, so a parsed document is indistinguishable from a built one.
+   *
+   * Root attributes come back as properties, which is what makes a round trip
+   * byte-identical: the namespace declarations and xsi:schemaLocation are part
+   * of the document, not something the profile re-derives.
+   *
+   * An element this library cannot represent is reported, never dropped. 32
+   * UBL children still have no component class, and a document carrying one
+   * would otherwise lose it silently on the way through.
+   */
+  static fromXml(xml: string): Invoice {
+    return Invoice.fromParsed(parseXml(xml));
+  }
+
+  /**
+   * Read an invoice back from OASIS UBL JSON (Alternative Representation v2.0).
+   *
+   * The inverse of {@link getJson}. The namespaces the JSON form hoists to
+   * `_D` / `_A` / `_B` / `_E` are not properties of the invoice, so a document
+   * arriving this way has none set; call the profile's `defaults()` before
+   * rendering it as XML.
+   */
+  static fromJson(document: Record<string, unknown>): Invoice {
+    return Invoice.fromParsed(parseUblJson(document));
+  }
+
+  private static fromParsed(root: ParsedElement): Invoice {
+    const invoice = new Invoice();
+    Object.entries(root.attributes).forEach(([key, value]) => invoice.addProperty(key, value));
+
+    const unknown: string[] = [];
+    const params = paramsFrom(root, INVOICE_CHILDREN_MAP, root.name, unknown);
+    if (unknown.length) {
+      throw new Error(`Invoice cannot represent: ${unknown.join(', ')}`);
+    }
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) value.forEach((item) => invoice.assignChild(key, item));
+      else invoice.assignChild(key, value);
+    });
+
+    return invoice;
   }
 
   /** Add an attribute to the Invoice root, typically a namespace declaration. */

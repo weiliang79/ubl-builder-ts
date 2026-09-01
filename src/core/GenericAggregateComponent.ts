@@ -105,6 +105,18 @@ export default class GenericAggregateComponent {
     return toXmlObject(this.toNode());
   }
 
+  /**
+   * The params map this component was built with.
+   *
+   * Reading a document back needs the same table that writes one: which
+   * element name goes with which key, what class it becomes, and whether it
+   * repeats. Without this the parser would need a second copy of all 519
+   * entries, and a second copy is how every drift in this package started.
+   */
+  getParamsMap(): IGenericKeyValue<ParamsMapValues> {
+    return this.paramsMap;
+  }
+
   assignContent(content: any) {
     Object.keys(content || {})
       .filter((att) => content[att] != null)
