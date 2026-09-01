@@ -57,7 +57,7 @@
     "prepublishOnly": "npm run build && npm run lint && npm run typecheck && npm run check:schema && npm run check:types && npm test && npm run validate:xsd",
     "preversion": "npm run lint",
     "version": "npm run format && git add -A src",
-    "postversion": "git push && git push --tags",
+    "postversion": "git push --follow-tags",
     "publish-npm": "npm publish --access public",
     "report:schema": "ts-node --project tsconfig.json scripts/generator/report.ts",
     "generate:cac": "ts-node --project tsconfig.json scripts/generator/emit.ts",
