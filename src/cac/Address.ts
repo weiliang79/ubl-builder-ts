@@ -88,8 +88,6 @@ type AllowedParams = {
   addressLines?: AddressLine[];
   /**  The country in which this address is situated */
   country?: Country;
-  // ##################################  TODO CAC MISSING ################################################
-  // postalAddress: { order: 10,  attributeName: 'cac:PostalAddress', max: 1, classRef: PostalAddress }
 };
 
 /**
