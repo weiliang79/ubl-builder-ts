@@ -44,7 +44,9 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      # write, not read, because the last step cuts a GitHub Release. Scoped to
+      # this job — the ci job it depends on still runs with the default.
+      contents: write
       # The whole authentication story. npm exchanges this OIDC token for a
       # short-lived publish credential, and uses it to sign the provenance
       # attestation linking the tarball to this workflow run.
@@ -118,6 +120,25 @@ jobs:
         env:
           DIST_TAG: ${{ steps.disttag.outputs.tag }}
 
+      # Deliberately after the publish, never before: a release page announcing
+      # a version that is not on npm is worse than no release page at all.
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIST_TAG: ${{ steps.disttag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # --verify-tag refuses to invent a tag if the ref somehow went missing.
+          # A prerelease is marked as one so it does not show as the latest
+          # release, mirroring what --tag next does on the registry side.
+          if [ "$DIST_TAG" = "next" ]; then
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag --prerelease
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          fi
+
       - name: Summary
         env:
           DIST_TAG: ${{ steps.disttag.outputs.tag }}
@@ -130,4 +151,5 @@ jobs:
             echo "- dist-tag: \`${DIST_TAG}\`"
             echo "- tag: \`${GITHUB_REF_NAME}\`"
             echo "- <https://www.npmjs.com/package/${name}/v/${version}>"
+            echo "- <${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}>"
           } >> "$GITHUB_STEP_SUMMARY"
