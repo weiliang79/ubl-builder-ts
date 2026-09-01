@@ -46,13 +46,13 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
 type AllowedParams = {
   sourceCurrencyCode: string | UdtCode;
-  sourceCurrencyBaseRate: string | UdtRate;
+  sourceCurrencyBaseRate?: string | UdtRate;
   targetCurrencyCode: string | UdtCode;
-  targetCurrencyBaseRate: string | UdtRate;
-  exchangeMarketID: string | UdtIdentifier;
-  calculationRate: string | UdtRate;
-  mathematicOperatorCode: string | UdtCode;
-  date: string | UdtDate;
+  targetCurrencyBaseRate?: string | UdtRate;
+  exchangeMarketID?: string | UdtIdentifier;
+  calculationRate?: string | UdtRate;
+  mathematicOperatorCode?: string | UdtCode;
+  date?: string | UdtDate;
 };
 
 /**

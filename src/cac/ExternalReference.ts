@@ -17,27 +17,27 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
 type AllowedParams = {
   /** The Uniform Resource Identifier (URI) that identifies the external object as an Internet resource */
-  URI: UdtIdentifier | string;
+  URI?: UdtIdentifier | string;
   /** A hash value for the externally stored object */
-  documentHash: UdtText | string;
+  documentHash?: UdtText | string;
   /** The date on which this period ends */
-  hashAlgorithmMethod: UdtText | string;
+  hashAlgorithmMethod?: UdtText | string;
   /** The date on which availability of the resource can no longer be relied upon */
-  expiryDate: UdtDate | string;
+  expiryDate?: UdtDate | string;
   /** The time after which availability of the resource can no longer be relied upon */
-  expiryTime: UdtTime | string;
+  expiryTime?: UdtTime | string;
   /** A code signifying the mime type of the external object */
-  mimeCode: UdtCode | string;
+  mimeCode?: UdtCode | string;
   /** A code signifying the format of the external object */
-  formatCode: UdtCode | string;
+  formatCode?: UdtCode | string;
   /** A code signifying the encoding/decoding algorithm used with the external object */
-  encodingCode: UdtCode | string;
+  encodingCode?: UdtCode | string;
   /** A code signifying the character set of an external document */
-  characterSetCode: UdtCode | string;
+  characterSetCode?: UdtCode | string;
   /** The file name of the external object */
-  fileName: UdtName | string;
+  fileName?: UdtName | string;
   /** Text describing the external object */
-  description: UdtText[] | string[];
+  description?: UdtText[] | string[];
 };
 // const GenericAggregateComponent = require("./GenericAggregateComponent");
 

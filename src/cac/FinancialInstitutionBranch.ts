@@ -22,7 +22,7 @@ type AllowedParams = {
   financialInstitution?: FinancialInstitution;
   /** The address of this branch or division. */
   address?: PostalAddress;
-  id: string | UdtIdentifier;
+  id?: string | UdtIdentifier;
 };
 
 /**

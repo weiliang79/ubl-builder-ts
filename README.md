@@ -102,11 +102,12 @@ rejects conformant documents.
   client.
 - **Profile constraints.** MyInvois requires fields UBL marks optional; the
   library does not yet enforce that, and LHDN rejects them on submission.
-- **23 UBL child elements** are not yet reachable: 19 need component types that
-  do not exist here yet, and 4 are self-referential — `cac:AgentParty` inside
-  `PartyType`, and similar — which the generator does not yet emit lazily. Run
-  `npm run generate:complete` for the current list. Everything absent is
-  optional in UBL.
+- **51 UBL child elements** are not yet reachable. 32 need one of 26 component
+  types that do not exist here yet; the other 19 sit in `DocumentReference`,
+  `ItemPriceExtension` and `PostalAddress`, which were invisible to the
+  completion generator until it learned to read `interface AllowedParams` as
+  well as `type AllowedParams`, and are next. Run `npm run generate:complete`
+  for the current list. Everything absent is optional in UBL.
 
 The library never computes or validates monetary totals — see the BR-CO-13
 note above for why.

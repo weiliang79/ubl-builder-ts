@@ -108,7 +108,7 @@ type AllowedParams = {
   /** A mutually agreed code signifying the reason for this allowance or charge */
   allowanceChargeReasonCode?: string | UdtCode;
   /** The reason for this allowance or charge */
-  allowanceChargeReason?: string | UdtText;
+  allowanceChargeReason?: (string | UdtText)[];
   /** A number by which the base amount is multiplied to calculate the actual amount of this allowance or charge */
   multiplierFactorNumeric?: string | UdtAmount;
 
@@ -117,7 +117,7 @@ type AllowedParams = {
   /*  */
   baseAmount?: string | UdtAmount;
 
-  taxCategory?: TaxCategory;
+  taxCategory?: TaxCategory[];
 };
 
 /**

@@ -102,6 +102,7 @@ import {
 } from './LineReference';
 import { LegalMonetaryTotal, MonetaryTotal, MonetaryTotalParams } from './MonetaryTotal';
 import { OrderLineReference, OrderLineReferenceParams } from './OrderLineReference';
+import { PayeeFinancialAccount, PayeeFinancialAccountParams } from './PayeeFinancialAccount';
 import { PaymentType, PaymentTypeParams, PrepaidPayment } from './Payment';
 import { PaymentMeans, PaymentMeansParams } from './PaymentMeans';
 import { PaymentTerms, PaymentTermsTypeParams } from './PaymentTerms';
@@ -219,6 +220,8 @@ export {
   PartyParams,
   PartyTaxScheme,
   PartyTaxSchemeParams,
+  PayeeFinancialAccount,
+  PayeeFinancialAccountParams,
   PaymentExchangeRate,
   PaymentMeans,
   PaymentMeansParams,

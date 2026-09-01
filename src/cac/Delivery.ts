@@ -102,31 +102,31 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  id: string | UdtIdentifier;
-  quantity: string | UdtQuantity;
-  minimumQuantity: string | UdtQuantity;
-  maximumQuantity: string | UdtQuantity;
+  id?: string | UdtIdentifier;
+  quantity?: string | UdtQuantity;
+  minimumQuantity?: string | UdtQuantity;
+  maximumQuantity?: string | UdtQuantity;
   /** @type { UdtDate } */
-  actualDeliveryDate: string | UdtDate;
-  actualDeliveryTime: string | UdtTime;
-  latestDeliveryDate: string | UdtDate;
-  latestDeliveryTime: string | UdtTime;
-  releaseID: string | UdtIdentifier;
-  trackingID: string | UdtIdentifier;
-  deliveryAddress: DeliveryAddress;
-  deliveryLocation: DeliveryLocation;
-  alternativeDeliveryLocation: AlternativeDeliveryLocation;
-  requestedDeliveryPeriod: RequestedDeliveryPeriod;
-  promisedDeliveryPeriod: PromisedDeliveryPeriod;
-  estimatedDeliveryPeriod: EstimatedDeliveryPeriod;
-  carrierParty: CarrierParty;
-  deliveryParty: DeliveryParty;
-  notifyParties: NotifyParty[];
-  despatch: Despatch;
-  deliveryTerms: UdtDate[];
-  minimumDeliveryUnit: MinimumDeliveryUnit;
-  maximumDeliveryUnit: MaximumDeliveryUnit;
-  shipment: ShipmentType;
+  actualDeliveryDate?: string | UdtDate;
+  actualDeliveryTime?: string | UdtTime;
+  latestDeliveryDate?: string | UdtDate;
+  latestDeliveryTime?: string | UdtTime;
+  releaseID?: string | UdtIdentifier;
+  trackingID?: string | UdtIdentifier;
+  deliveryAddress?: DeliveryAddress;
+  deliveryLocation?: DeliveryLocation;
+  alternativeDeliveryLocation?: AlternativeDeliveryLocation;
+  requestedDeliveryPeriod?: RequestedDeliveryPeriod;
+  promisedDeliveryPeriod?: PromisedDeliveryPeriod;
+  estimatedDeliveryPeriod?: EstimatedDeliveryPeriod;
+  carrierParty?: CarrierParty;
+  deliveryParty?: DeliveryParty;
+  notifyParties?: NotifyParty[];
+  despatch?: Despatch;
+  deliveryTerms?: UdtDate[];
+  minimumDeliveryUnit?: MinimumDeliveryUnit;
+  maximumDeliveryUnit?: MaximumDeliveryUnit;
+  shipment?: ShipmentType;
 };
 
 /**

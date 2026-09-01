@@ -25,7 +25,7 @@ type AllowedParams = {
   taxAmount: string | UdtAmount;
   roundingAmount?: string | UdtAmount;
   taxEvidenceIndicator?: string | UdtIndicator;
-  taxSubtotals: TaxSubtotal[];
+  taxSubtotals?: TaxSubtotal[];
 
   taxIncludedIndicator?: string | UdtIndicator;
 };

@@ -70,25 +70,25 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  id: string | UdtIdentifier;
-  requestedDespatchDate: string | UdtDate;
-  requestedDespatchTime: string | UdtTime;
-  estimatedDespatchDate: string | UdtDate;
-  estimatedDespatchTime: string | UdtTime;
-  actualDespatchDate: string | UdtDate;
-  actualDespatchTime: string | UdtTime;
-  guaranteedDespatchDate: string | UdtDate;
-  guaranteedDespatchTime: string | UdtTime;
-  releaseID: string | UdtIdentifier;
-  instructions: string | UdtText;
-  despatchAddress: DespatchAddress;
-  despatchLocation: DespatchLocation;
-  despatchParty: DespatchParty;
-  carrierParty: CarrierParty;
-  NotifyParties: NotifyParty;
-  contact: Contact;
-  estimatedDespatchPeriod: EstimatedDespatchPeriod;
-  requestedDespatchPeriod: EstimatedDespatchPeriod;
+  id?: string | UdtIdentifier;
+  requestedDespatchDate?: string | UdtDate;
+  requestedDespatchTime?: string | UdtTime;
+  estimatedDespatchDate?: string | UdtDate;
+  estimatedDespatchTime?: string | UdtTime;
+  actualDespatchDate?: string | UdtDate;
+  actualDespatchTime?: string | UdtTime;
+  guaranteedDespatchDate?: string | UdtDate;
+  guaranteedDespatchTime?: string | UdtTime;
+  releaseID?: string | UdtIdentifier;
+  instructions?: (string | UdtText)[];
+  despatchAddress?: DespatchAddress;
+  despatchLocation?: DespatchLocation;
+  despatchParty?: DespatchParty;
+  carrierParty?: CarrierParty;
+  NotifyParties?: NotifyParty[];
+  contact?: Contact;
+  estimatedDespatchPeriod?: EstimatedDespatchPeriod;
+  requestedDespatchPeriod?: EstimatedDespatchPeriod;
 };
 
 /**

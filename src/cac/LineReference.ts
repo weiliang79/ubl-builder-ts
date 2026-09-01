@@ -29,11 +29,11 @@ type AllowedParams = {
   /** Identifies the referenced line in the document */
   lineID: string | UdtIdentifier;
   /** A universally unique identifier for this line reference */
-  uuid: string | UdtIdentifier;
+  uuid?: string | UdtIdentifier;
   /** A code signifying the status of the referenced line with respect to its original state  */
-  lineStatusCode: string | UdtCode;
+  lineStatusCode?: string | UdtCode;
   /** A reference to the document containing the referenced line */
-  documentReference: DocumentReference;
+  documentReference?: DocumentReference;
 };
 
 class LineReference extends GenericAggregateComponent {

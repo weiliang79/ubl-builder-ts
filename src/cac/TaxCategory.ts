@@ -41,10 +41,10 @@ type AllowedParams = {
   baseUnitMeasure?: string | UdtMeasure;
   perUnitAmount?: string | UdtAmount;
   taxExemptionReasonCode?: string | UdtCode;
-  taxExemptionReason?: string | UdtText;
+  taxExemptionReason?: (string | UdtText)[];
   tierRange?: string | UdtText;
   tierRatePercent?: string | UdtPercent;
-  taxScheme?: TaxScheme;
+  taxScheme: TaxScheme;
 };
 
 /**

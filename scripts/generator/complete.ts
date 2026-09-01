@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild, SchemaType } from './schema';
+import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
 
 /**
  * Adds the elements the fork never transcribed.
@@ -38,15 +39,20 @@ function udtClass(type: string): string {
  * an element no existing map happens to use — cac:CountryType via
  * cac:OriginCountry, say — and keying by element would miss those.
  */
-function learnByType(files: string[], schema: Schema): Map<string, { classRef: string; module: string }> {
-  const learned = new Map<string, { classRef: string; module: string }>();
+function learnByType(
+  files: string[],
+  schema: Schema,
+): Map<string, { classRef: string; declared: string; module: string }> {
+  const learned = new Map<string, { classRef: string; declared: string; module: string }>();
 
   files.forEach((file) => {
     const stem = basename(file, '.ts');
     const type = schemaTypeFor(stem, schema);
     if (!type) return;
     const key = schema.elements.get(`cac:${stem}`) ?? `cac:${type.name}`;
-    const source = readFileSync(join(CAC_DIR, file), 'utf8');
+    // Blanked: the `export { … }` scan below is not line-anchored, so a
+    // commented-out export block would otherwise be learned as real.
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
 
     // The importable name is the *exported* one, which is often an alias:
     // TaxTotal.ts declares TaxTotalType and exports it as TaxTotal, and
@@ -66,19 +72,54 @@ function learnByType(files: string[], schema: Schema): Map<string, { classRef: s
     const names = aliases.get(primary) ?? [primary];
     // prefer the alias matching the file name, so imports read predictably
     const classRef = names.find((n) => n === stem) ?? names[0];
-    learned.set(key, { classRef, module: file });
+    // `declared` is the name the class statement actually binds. It differs
+    // from classRef whenever a file exports under an alias — Location.ts
+    // declares LocationType and exports it as AlternativeDeliveryLocation —
+    // and a same-file reference must use the binding, not the export name.
+    learned.set(key, { classRef, declared: primary, module: file });
   });
 
-  // fall back to whatever existing maps already do
+  // Fall back to whatever existing maps already do — but only to *live* ones.
+  //
+  // Scanning the raw source also matched commented-out entries, which are
+  // plentiful here and frequently wrong: it learned cac:BillingReferenceLine
+  // and cac:DiscrepancyResponse as `null`, cac:SubDebitNoteLine as `undefined`,
+  // and cac:OtherCommunication as UdtIdentifier. Nothing has emitted from those
+  // yet only because `present` scrapes commented-out attributeNames too and
+  // masks them; the first child that slips past would emit `classRef: null` and
+  // `import { null } from './BillingReference'`.
+  //
+  // So comments are stripped first, and a classRef is only believed if it looks
+  // like a class and the module it came from actually exports it.
   files.forEach((file) => {
-    const source = readFileSync(join(CAC_DIR, file), 'utf8');
-    for (const m of source.matchAll(/attributeName:\s*'(cac:[^']+)',[^}]*?classRef:\s*(\w+)/g)) {
-      const declared = schema.elements.get(m[1]);
-      if (declared && !learned.has(declared)) learned.set(declared, { classRef: m[2], module: file });
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
+    for (const m of source.matchAll(/attributeName:\s*'(cac:[^']+)',[^}]*?classRef:\s*(?:\(\) =>\s*)?(\w+)/g)) {
+      const type = schema.elements.get(m[1]);
+      const ref = m[2];
+      if (!type || learned.has(type)) continue;
+      // `classRef: null` is a deliberate placeholder in a few maps for types
+      // with no component class yet; it is not a name to learn.
+      if (!/^[A-Z]\w*$/.test(ref)) continue;
+      // The module recorded here becomes an import path later, so it must be
+      // where the symbol actually lives. Declared in this file is fine; merely
+      // imported into it is not — a file that imports X does not necessarily
+      // re-export it, and pointing an import at it emits code that will not
+      // compile. When it is imported, follow the import to its real home.
+      const from = importsOf(source).get(ref);
+      if (declaredIn(source).has(ref)) {
+        learned.set(type, { classRef: ref, declared: ref, module: file });
+      } else if (from?.startsWith('./')) {
+        learned.set(type, { classRef: ref, declared: ref, module: `${from.slice(2)}.ts` });
+      }
     }
   });
 
   return learned;
+}
+
+/** Class names this file declares itself. */
+function declaredIn(source: string): Set<string> {
+  return new Set([...source.matchAll(/^(?:export )?(?:default )?(?:abstract )?class (\w+)/gm)].map((m) => m[1]));
 }
 
 /** Where a symbol is imported from, if the file already imports it. */
@@ -114,6 +155,7 @@ interface Addition {
   classRef: string;
   from: string | null; // module to import from, null if already imported
   tsType: string;
+  lazy: boolean; // emit `() => X` because X is declared below the params map
 }
 
 function main(): void {
@@ -125,7 +167,6 @@ function main(): void {
   let added = 0;
   let changedFiles = 0;
   const unresolved = new Map<string, number>();
-  const selfReferential = new Map<string, number>();
 
   files.forEach((file) => {
     const path = join(CAC_DIR, file);
@@ -133,25 +174,39 @@ function main(): void {
     const type = schemaTypeFor(basename(file, '.ts'), schema);
     if (!type) return;
 
-    const mapOpen = /const ParamsMap[^=]*=\s*\{/.exec(source);
-    const paramsOpen = /type AllowedParams\s*=\s*\{/.exec(source);
+    // Every search below runs on the blanked copy and every write on the real
+    // one. Blanking preserves length, so an offset found in `scan` addresses
+    // the same character in `source`.
+    let scan = blankComments(source);
+    const mapOpen = /const ParamsMap[^=]*=\s*\{/.exec(scan);
+    const paramsOpen = ALLOWED_PARAMS_OPEN.exec(scan);
     if (!mapOpen || !paramsOpen) return;
 
-    const present = new Set([...source.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
-    const existingImports = importsOf(source);
-    const usedKeys = new Set([...source.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));
+    // Comment-stripped, for the same reason the fallback loop above is: a
+    // commented-out entry is not an emitted one. InvoiceLine.ts and
+    // DebitNoteLine.ts each carry a commented `cac:SubInvoiceLine` /
+    // `cac:SubDebitNoteLine`, which made this treat both as already present and
+    // skip them — silently, since a skip for this reason is not even reported.
+    const present = new Set([...scan.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
+    // A commented-out import would otherwise make this think the symbol is
+    // already imported, and the generator would emit a classRef with no import.
+    const existingImports = importsOf(scan);
+    // A 2-space-indented `key: {` inside a block comment would otherwise add a
+    // phantom key and silently drop a real child.
+    const usedKeys = new Set([...scan.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));
 
     const additions: Addition[] = [];
     type.children.forEach((child) => {
       if (present.has(child.name)) return;
 
-      // A self-referential child would put the class above its own declaration
-      // (cac:AgentParty inside PartyType). That needs a lazy classRef, which is
-      // a change to the params map contract rather than an addition to it.
-      if (child.type === schema.elements.get(`cac:${basename(file, '.ts')}`) || child.type === `cac:${type.name}`) {
-        selfReferential.set(child.name, (selfReferential.get(child.name) ?? 0) + 1);
-        return;
-      }
+      // A self-referential child names the very class the params map sits above
+      // — cac:AgentParty inside PartyType. Referring to it eagerly would read
+      // the binding before the class statement initialises it, so these are
+      // emitted as `() => X` and resolved on first use by resolveClassRef.
+      // The mechanism already exists and is used for cross-file cycles; this
+      // only stops the generator declining to reach for it.
+      const isSelfReferential =
+        child.type === schema.elements.get(`cac:${basename(file, '.ts')}`) || child.type === `cac:${type.name}`;
 
       const repeats = child.maxOccurs === null;
       let classRef: string;
@@ -168,7 +223,10 @@ function main(): void {
           unresolved.set(child.type, (unresolved.get(child.type) ?? 0) + 1);
           return;
         }
-        classRef = known.classRef;
+        // Cross-file references import the exported name; a self-reference is
+        // resolved in this module's own scope, where only the declared name
+        // exists. Using the export alias there is a ReferenceError at first use.
+        classRef = isSelfReferential ? known.declared : known.classRef;
         tsType = classRef;
         if (!existingImports.has(classRef)) from = `./${basename(known.module, '.ts')}`;
         if (from === `./${basename(file, '.ts')}`) from = null; // defined in this file
@@ -179,7 +237,19 @@ function main(): void {
       if (usedKeys.has(key)) return; // a differently-named entry already covers it
       usedKeys.add(key);
 
-      additions.push({ key, child, classRef, from, tsType: repeats ? `${tsType}[]` : tsType });
+      // Lazy for component refs, eager for datatypes — which is exactly what
+      // the 495 existing entries do: 153 cac-to-cac refs are all `() => X`,
+      // and all 342 udt refs are bare. Components can form import cycles, and
+      // resolveClassRef exists because six BillingReference entries once
+      // captured undefined across one; datatypes are leaves and never can.
+      additions.push({
+        key,
+        child,
+        classRef,
+        from,
+        tsType: repeats ? `${tsType}[]` : tsType,
+        lazy: !child.type.startsWith('udt:'),
+      });
     });
 
     if (additions.length === 0) return;
@@ -190,7 +260,7 @@ function main(): void {
         (a) =>
           `  ${a.key}: { order: ${type.children.indexOf(a.child) + 1}, attributeName: '${a.child.name}', ` +
           `max: ${a.child.maxOccurs === null ? 'undefined' : a.child.maxOccurs}, ` +
-          `classRef: ${a.classRef} },`,
+          `classRef: ${a.lazy ? `() => ${a.classRef}` : a.classRef} },`,
       )
       .join('\n');
 
@@ -200,7 +270,8 @@ function main(): void {
       mapOpen.index! + mapOpen[0].length,
     )}`;
 
-    const reopened = /type AllowedParams\s*=\s*\{/.exec(source)!;
+    scan = blankComments(source);
+    const reopened = ALLOWED_PARAMS_OPEN.exec(scan)!;
     source = `${source.slice(0, reopened.index! + reopened[0].length)}\n${paramFields}${source.slice(
       reopened.index! + reopened[0].length,
     )}`;
@@ -212,10 +283,17 @@ function main(): void {
       .forEach((a) => byModule.set(a.from!, [...(byModule.get(a.from!) ?? []), a.classRef]));
     byModule.forEach((symbols, module) => {
       const unique = [...new Set(symbols)].sort();
-      const existing = new RegExp(`import \\{([^}]+)\\} from '${module.replace('.', '\\.')}';`).exec(source);
+      scan = blankComments(source);
+      const existing = new RegExp(`import \\{([^}]+)\\} from '${module.replace('.', '\\.')}';`).exec(scan);
       if (existing) {
         const merged = [...new Set([...existing[1].split(',').map((s) => s.trim()), ...unique])].filter(Boolean).sort();
-        source = source.replace(existing[0], `import { ${merged.join(', ')} } from '${module}';`);
+        // Spliced by offset, not string-replaced: an identical import line
+        // inside an earlier comment would otherwise be rewritten instead.
+        const at = existing.index as number;
+        source =
+          source.slice(0, at) +
+          `import { ${merged.join(', ')} } from '${module}';` +
+          source.slice(at + existing[0].length);
       } else {
         source = `import { ${unique.join(', ')} } from '${module}';\n${source}`;
       }
@@ -232,12 +310,6 @@ function main(): void {
 
   console.log(`\n${'='.repeat(64)}`);
   console.log(`${write ? 'added' : 'would add'} ${added} elements across ${changedFiles} files`);
-  if (selfReferential.size) {
-    const total = [...selfReferential.values()].reduce((a, b) => a + b, 0);
-    console.log(
-      `\nskipped ${total} self-referential children (need a lazy classRef): ${[...selfReferential.keys()].join(', ')}`,
-    );
-  }
   if (unresolved.size) {
     const total = [...unresolved.values()].reduce((a, b) => a + b, 0);
     console.log(`\nskipped ${total} children needing ${unresolved.size} component types that do not exist yet:`);

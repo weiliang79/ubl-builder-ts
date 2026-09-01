@@ -38,6 +38,12 @@ import { TaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  subDebitNoteLines: {
+    order: 21,
+    attributeName: 'cac:SubDebitNoteLine',
+    max: undefined,
+    classRef: () => DebitNoteLineType,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   uuid: { order: 2, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
   notes: { order: 3, attributeName: 'cbc:Note', max: undefined, classRef: UdtText },
@@ -83,30 +89,30 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   price: { order: 20, attributeName: 'cac:Price', max: 1, classRef: () => Price },
   // discrepancyResponses: { order: 10,  attributeName: 'cac:DiscrepancyResponse', max: undefined, classRef: undefined },
   // pricingReference: { order: 15,  attributeName: 'cac:PricingReference', max: 1, classRef: undefined },
-  // allowanceCharges: { order: 18,  attributeName: 'cac:TaxTotal', max: undefined, classRef: () => AllowanceCharge },
-  // subDebitNoteLine: { order: 21,  attributeName: 'cac:SubDebitNoteLine', max: undefined, classRef: undefined },
 };
 
 type AllowedParams = {
+  /** A recursive description of a debit note line subsidiary to this debit note line. */
+  subDebitNoteLines?: DebitNoteLineType[];
   /** An allowance or charge associated with this debit note. */
   allowanceCharges?: AllowanceCharge[];
   id: string | UdtIdentifier;
-  uuid: string | UdtIdentifier;
-  notes: string | UdtText;
-  debitedQuantity: string | UdtQuantity;
+  uuid?: string | UdtIdentifier;
+  notes?: (string | UdtText)[];
+  debitedQuantity?: string | UdtQuantity;
   lineExtensionAmount: string | UdtAmount;
-  taxPointDate: string | UdtDate;
-  accountingCostCode: string | UdtCode;
-  accountingCost: string | UdtText;
-  paymentPurposeCode: string | UdtCode;
-  despatchLineReferences: DespatchLineReference[];
-  receiptLineReferences: ReceiptLineReference[];
-  billingReferences: BillingReference[];
-  documentReferences: DocumentReference[];
-  deliveries: Delivery[];
-  taxTotals: TaxTotal[];
-  item: Item;
-  price: Price;
+  taxPointDate?: string | UdtDate;
+  accountingCostCode?: string | UdtCode;
+  accountingCost?: string | UdtText;
+  paymentPurposeCode?: string | UdtCode;
+  despatchLineReferences?: DespatchLineReference[];
+  receiptLineReferences?: ReceiptLineReference[];
+  billingReferences?: BillingReference[];
+  documentReferences?: DocumentReference[];
+  deliveries?: Delivery[];
+  taxTotals?: TaxTotal[];
+  item?: Item;
+  price?: Price;
 };
 
 /**

@@ -46,7 +46,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  party: Party;
+  party?: Party;
   customerAssignedAccountID?: string | UdtIdentifier;
   SupplierAssignedAccountID?: string | UdtIdentifier;
   additionalAccountIDs?: string[] | UdtIdentifier[];

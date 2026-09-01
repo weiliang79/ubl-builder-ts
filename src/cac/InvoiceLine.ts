@@ -51,6 +51,7 @@ import { TaxTotal, WithholdingTaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  subInvoiceLines: { order: 27, attributeName: 'cac:SubInvoiceLine', max: undefined, classRef: () => InvoiceLine },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   uuid: { order: 2, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
   notes: { order: 3, attributeName: 'cbc:Note', max: undefined, classRef: UdtText },
@@ -117,7 +118,6 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   item: { order: 24, attributeName: 'cac:Item', max: 1, classRef: () => Item },
   price: { order: 25, attributeName: 'cac:Price', max: 1, classRef: () => Price },
   deliveryTerms: { order: 26, attributeName: 'cac:DeliveryTerms', max: 1, classRef: () => DeliveryTerms },
-  // subInvoiceLine: { order: 27,  attributeName: 'cac:SubInvoiceLine', max: undefined, classRef: SubInvoiceLine },
   itemPriceExtension: {
     order: 28,
     attributeName: 'cac:ItemPriceExtension',
@@ -127,11 +127,13 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  id: string | UdtIdentifier; // Mandatory
+  /** An invoice line subsidiary to this invoice line. */
+  subInvoiceLines?: InvoiceLine[];
+  id: string | UdtIdentifier;
   uuid?: string | UdtIdentifier;
   notes?: string[] | UdtText[];
-  invoicedQuantity: string | UdtQuantity; // Mandatory
-  lineExtensionAmount: string | UdtAmount; // Mandatory
+  invoicedQuantity?: string | UdtQuantity;
+  lineExtensionAmount: string | UdtAmount;
   taxPointDate?: string | UdtDate;
   accountingCostCode?: string | UdtCode;
   accountingCost?: string | UdtText;
@@ -145,13 +147,13 @@ type AllowedParams = {
   documentReference?: DocumentReference[];
   // PricingReference: "",
   originatorParty?: Party;
-  delivery?: Delivery;
-  paymentTerms?: PaymentTerms;
+  delivery?: Delivery[];
+  paymentTerms?: PaymentTerms[];
   allowanceCharges?: AllowanceCharge[];
   taxTotals?: TaxTotal[];
   withholdingTaxTotal?: WithholdingTaxTotal[];
-  item: Item; // Mandatory
-  price: Price; // Mandatory
+  item: Item;
+  price?: Price;
   deliveryTerms?: DeliveryTerms;
   // subInvoiceLine: "",
   itemPriceExtension?: ItemPriceExtension;

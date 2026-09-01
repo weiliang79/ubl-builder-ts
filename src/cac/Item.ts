@@ -182,10 +182,10 @@ type AllowedParams = {
   hazardousRiskIndicator?: string | UdtIndicator;
   additionalInformations?: UdtText[];
   keywords?: UdtText[];
-  brandName?: string | UdtName;
-  modelName?: string | UdtName;
+  brandName?: (string | UdtName)[];
+  modelName?: (string | UdtName)[];
   sellersItemIdentification?: SellersItemIdentification;
-  classifiedTaxCategory?: ClassifiedTaxCategory;
+  classifiedTaxCategory?: ClassifiedTaxCategory[];
   originCountry?: Country;
   commodityClassification?: CommodityClassification[];
 };

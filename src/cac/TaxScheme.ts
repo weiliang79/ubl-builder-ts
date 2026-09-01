@@ -24,11 +24,11 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  id: string | UdtIdentifier;
+  id?: string | UdtIdentifier;
   name?: string | UdtName;
   taxTypeCode?: string | UdtCode;
   currencyCode?: string | UdtCode;
-  jurisdictionRegionAddress?: string | JurisdictionRegionAddress;
+  jurisdictionRegionAddress?: (string | JurisdictionRegionAddress)[];
 };
 
 /**

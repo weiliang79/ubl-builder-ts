@@ -22,7 +22,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
-  batchQuantity?: string | UdtQuantity;
+  batchQuantity: string | UdtQuantity;
   consumerUnitQuantity?: string | UdtQuantity;
   hazardousRiskIndicator?: string | UdtIndicator;
 };

@@ -23,9 +23,9 @@ type AllowedParams = {
   /** The duration of this period, expressed as an ISO 8601 code. */
   durationMeasure?: string | UdtMeasure;
   /** A description of this period, expressed as a code. */
-  descriptionCode?: string | UdtCode;
+  descriptionCode?: (string | UdtCode)[];
   /** A description of this period, expressed as text. */
-  description?: string | UdtText;
+  description?: (string | UdtText)[];
 };
 
 // /* eslint max-classes-per-file: ["error", 2] */

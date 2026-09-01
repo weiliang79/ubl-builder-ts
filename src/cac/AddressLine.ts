@@ -9,7 +9,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
 type AllowedParams = {
   /** An address line expressed as unstructured text */
-  line?: string | UdtText;
+  line: string | UdtText;
 };
 
 /**
