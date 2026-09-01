@@ -71,12 +71,88 @@ and the sixth is annotated as needing a component type that does not exist yet.
 
 # Migrating to 0.2.0
 
-The document model is unchanged and XML output is byte-for-byte identical to
-0.1.1. What changes is the _types_: `AllowedParams` was transcribed by hand and
-had drifted from the schema in 232 places, so the declarations now say what UBL
-says. Most of that is a relaxation and needs no action. Four groups do.
+Three things arrive: an invoice can be read back from XML or JSON, eight of its
+children can be set for the first time, and seven components can be imported at
+all. Everything else is the type declarations catching up with the schema —
+`AllowedParams` was transcribed by hand and had drifted in 256 places.
 
-## Four fields became required
+Most of that drift is a relaxation and needs no action. The sections under
+**What breaks** do; the rest are recorded so you can tell whether a bug you
+worked around is gone.
+
+Documents built through `Invoice` serialise exactly as they did in 0.1.1: the
+golden fixture is byte-for-byte unchanged at 4542 bytes.
+
+## What's new
+
+### Reading a document back
+
+`Invoice.fromXml(xml)` and `Invoice.fromJson(document)` are the inverses of
+`getXml()` and `getJson()`.
+
+```ts
+const invoice = Invoice.fromXml(receivedXml);
+invoice.setDueDate('2026-08-01');
+invoice.getXml(false, true); // byte-identical to what arrived, plus the change
+```
+
+Both rebuild the document from the same tables that write one, so what comes
+out renders as what went in: the golden XML fixture round-trips byte for byte,
+and the JSON fixture renders to the same XML.
+
+An element this library cannot represent, or one appearing more often than UBL
+allows, throws rather than being dropped — 31 UBL children still have no
+component class, and losing one in transit is worse than refusing the document.
+
+The UBL JSON form carries only the four namespaces it hoists to `_D` / `_A` /
+`_B` / `_E`, so a document that reaches you as JSON has any others it once had
+already gone. Those four are restored as root attributes.
+
+### Eight invoice children that could not be set
+
+Their setters existed and threw `not implemented`. `cac:PaymentTerms` and
+`cac:PayeeParty` are ordinary on a commercial invoice, and
+`cac:WithholdingTaxTotal` is what MyInvois uses for withholding.
+
+| Method                              | Element                              |
+| ----------------------------------- | ------------------------------------ |
+| `setPayeeParty`                     | `cac:PayeeParty`                     |
+| `setBuyerCustomerParty`             | `cac:BuyerCustomerParty`             |
+| `setSellerSupplierParty`            | `cac:SellerSupplierParty`            |
+| `addPaymentTerm`                    | `cac:PaymentTerms`                   |
+| `setTaxExchangeRate`                | `cac:TaxExchangeRate`                |
+| `setPricingExchangeRate`            | `cac:PricingExchangeRate`            |
+| `setPaymentAlternativeExchangeRate` | `cac:PaymentAlternativeExchangeRate` |
+| `addWithholdingTaxTotal`            | `cac:WithholdingTaxTotal`            |
+
+```ts
+invoice
+  .addPaymentTerm(new PaymentTerms({ notes: ['net 30'] }))
+  .setPayeeParty(new PayeeParty({ partyLegalEntities: [legalEntity] }));
+```
+
+Five element aliases came with them: `PayeeParty`, `BuyerCustomerParty`,
+`SellerSupplierParty`, `TaxExchangeRate` and `PaymentAlternativeExchangeRate`.
+
+### Seven components became reachable
+
+`Attachment`, `CommodityClassification`, `ExternalReference`,
+`FinancialInstitution`, `FinancialInstitutionBranch`, `ItemPriceExtension` and
+`SellersItemIdentification` were missing from the `cac` barrel. Since
+`./cac/<file>` is not an exported subpath, nothing outside the package could
+name them at all — `DocumentReference.attachment` could not be set because
+there was no way to build an `Attachment`.
+
+```ts
+import { Attachment, ExternalReference } from '@weiliang79/ubl-builder/cac';
+```
+
+`IssuerPartyParams` was on its module and missing from the barrel; it is
+exported now.
+
+## What breaks
+
+### Four fields became required
 
 Each is `minOccurs="1"` in UBL, and omitting it produces XML the XSD rejects —
 so this turns a rejected submission into a compile error.
@@ -96,22 +172,11 @@ new TaxCategory({ id: '06' });
 new TaxCategory({ id: '06', taxScheme: new TaxScheme({ id: 'OTH' }) });
 ```
 
-## Two fields became single values
-
-Both were typed as arrays against `maxOccurs="1"`, so passing an array
-type-checked and then threw `array given and max is defined` at serialization.
-They were unusable; now they work.
-
-| Component        | Field             | Was          | Now        |
-| ---------------- | ----------------- | ------------ | ---------- |
-| `CreditNoteLine` | `originatorParty` | `Party[]`    | `Party`    |
-| `Party`          | `language`        | `Language[]` | `Language` |
-
-## Thirty-three fields became arrays
+### Thirty-three fields became arrays
 
 These are `maxOccurs="unbounded"` in UBL but were typed as single values, so
-setting more than one needed a cast. Fifty-seven sibling fields already followed
-the array convention; these were the outliers. Wrap the value:
+setting more than one needed a cast. Most fields UBL marks unbounded were
+already arrays; these were the outliers. Wrap the value:
 
 ```ts
 // before
@@ -124,167 +189,58 @@ new InvoiceLine({ id: '1', lineExtensionAmount: '100.00', item, delivery: [deliv
 The runtime always accepted both, so this is a type-level change only — no
 output differs.
 
-## One field was misspelled
+### Two fields became single values
 
-`PostalAddress` declared `AdditionalStreetName` while its params map keyed on
-`additionalStreetName`, so the only spelling TypeScript accepted threw
-`attribute AdditionalStreetName is not allowed` from the constructor, and the
-spelling that worked did not compile. `cbc:AdditionalStreetName` — address line
-2, on every invoice with a PO box — was unreachable either way.
+Both were typed as arrays against `maxOccurs="1"`, so passing an array
+type-checked and then threw `array given and max is defined` at serialization.
+They were unusable; now they work.
 
-```ts
-// before — compiled, threw at construction
-new PostalAddress({ AdditionalStreetName: 'Po Box 351' });
+| Component        | Field             | Was          | Now        |
+| ---------------- | ----------------- | ------------ | ---------- |
+| `CreditNoteLine` | `originatorParty` | `Party[]`    | `Party`    |
+| `Party`          | `language`        | `Language[]` | `Language` |
 
-// after
-new PostalAddress({ additionalStreetName: 'Po Box 351' });
-```
-
-This survived because three of the 52 components write
-`interface AllowedParams {` where the rest write `type AllowedParams = {`, and
-every generator scan matched only the second form. `DocumentReference`,
-`ItemPriceExtension` and `PostalAddress` were silently exempt from all of them.
-The scans now accept both, and `check:types` fails on a component it cannot
-read rather than skipping it — which is how this was found.
-
-## `DocumentReference.issuerParty` takes a party, not a string
-
-It was declared `issuerParty?: string` with no params-map entry behind it, so
-the field compiled and then threw `attribute issuerParty is not allowed` from
-the constructor. `cac:IssuerParty` now works.
-
-```ts
-new DespatchDocumentReference({ id: 'DN-1', issuerParty: new IssuerParty({ … }) });
-```
-
-## Nine fields were wired to the wrong class
+### Eight fields narrowed to the datatype UBL names
 
 A params-map entry's `classRef` decides what a raw value is wrapped in, and
 nothing compared it to the schema until now. `npm run check:classref` does.
+These eight named a datatype UBL does not use there, so each accepts one fewer
+wrapper than it did.
 
-`Delivery.deliveryTerms` named `UdtDate` for `cac:DeliveryTerms`, an aggregate.
-The component was rebuilt as a date and serialised as an empty element, so the
-content was silently discarded:
+| Component            | Field                       | Was             | Now          |
+| -------------------- | --------------------------- | --------------- | ------------ |
+| `AllowanceCharge`    | `multiplierFactorNumeric`   | `UdtAmount`     | `UdtNumeric` |
+| `OrderLineReference` | `lineStatusCode`            | `UdtIdentifier` | `UdtCode`    |
+| `PaymentTerms`       | `settlementDiscountPercent` | `UdtCode`       | `UdtPercent` |
+| `CreditNoteLine`     | `accountingCost`            | `UdtAmount`     | `UdtText`    |
+| `Address`            | `streetName`                | `UdtText`       | `UdtName`    |
+| `Address`            | `additionalStreetName`      | `UdtText`       | `UdtName`    |
+| `Address`            | `cityName`                  | `UdtText`       | `UdtName`    |
+| `Address`            | `countrySubentityCode`      | `UdtText`       | `UdtCode`    |
 
-```xml
-<cac:Delivery><cac:DeliveryTerms></cac:DeliveryTerms></cac:Delivery>
-```
-
-It is `DeliveryTerms[]` now, and the children survive.
-
-The other eight named the wrong datatype, which kept the text but carried the
-wrong attribute set — so typed code with no casts in it could emit XML the XSD
-rejects. `AllowanceCharge.multiplierFactorNumeric` was `UdtAmount` against a
-NumericType, and an `UdtAmount` carries `currencyID`:
+The wrong wrapper kept the text and carried the wrong attribute set, so typed
+code with no casts in it could emit XML the XSD rejects:
 
 ```
 element MultiplierFactorNumeric: Schemas validity error :
   attribute 'currencyID': The attribute 'currencyID' is not allowed.
 ```
 
-| Component            | Field                       | Was             | Now                     |
-| -------------------- | --------------------------- | --------------- | ----------------------- |
-| `AllowanceCharge`    | `multiplierFactorNumeric`   | `UdtAmount`     | `UdtNumeric`            |
-| `DocumentReference`  | `documentDescription`       | `string[]`      | `(string \| UdtText)[]` |
-| `OrderLineReference` | `lineStatusCode`            | `UdtIdentifier` | `UdtCode`               |
-| `PaymentTerms`       | `settlementDiscountPercent` | `UdtCode`       | `UdtPercent`            |
-| `PostalAddress`      | `streetName`                | `UdtText`       | `UdtName`               |
-| `PostalAddress`      | `additionalStreetName`      | `UdtText`       | `UdtName`               |
-| `PostalAddress`      | `cityName`                  | `UdtText`       | `UdtName`               |
-| `PostalAddress`      | `countrySubentityCode`      | `UdtText`       | `UdtCode`               |
-
 Passing a plain string is unaffected — that is how most values arrive, and it
 was always wrapped correctly on the way out. Only code constructing the wrapper
-itself needs to change, and only where the old wrapper was the wrong one.
+itself needs to change.
 
-## Fifteen fields were declared as something other than what they build
-
-`check:classref` holds the `classRef` to the schema; `check:types` now holds the
-declaration to the `classRef`. Without the second, a field can be wrapped
-correctly and still be declared as something else.
-
-`DocumentReference.attachment` and `.validityPeriod` were declared `string`
-against entries that wrap in `Attachment` and `ValidityPeriod`, so the only
-value either type accepted was built as a component out of a string and threw
-`attribute 0 is not allowed`. Neither field was usable at all; both take their
-component now.
-
-Ten more on `DocumentReference` named no class at all where the entry wraps in
-a datatype: nine declared `string` — `id`, `issueDate`, `versionID` and the
-rest — and `xPath` declared `string[]`. Those worked, but the declaration
-refused the wrapper, so there was no way to set `schemeID` on an `id` or a
-`languageID` on a description. They take `string | Udt…` now, matching every
-other component.
-
-Three named the wrong class outright: `Address.countrySubentityCode` said
-`UdtText` against a `UdtCode` entry, `CreditNoteLine.accountingCost` said
-`UdtAmount` against `UdtText`, and `PartyTaxScheme.exemptionReason` was
-`string[]` where the entry wraps in `UdtText`.
-
-All of these widen or correct what a field accepts. Code passing plain strings
-is unaffected.
-
-## `PaymentTerms` takes its params, not a string
-
-`constructor(content: string)` meant the only call its signature allowed threw
-`attribute 0 is not allowed`, and every working call needed a cast. It takes
-`PaymentTermsTypeParams` now, like every other component.
-
-## Seven components became reachable
-
-`Attachment`, `CommodityClassification`, `ExternalReference`,
-`FinancialInstitution`, `FinancialInstitutionBranch`, `ItemPriceExtension` and
-`SellersItemIdentification` were missing from the `cac` barrel. Since
-`./cac/<file>` is not an exported subpath, nothing outside the package could
-name them at all — `DocumentReference.attachment` could not be set because
-there was no way to build an `Attachment`.
-
-```ts
-import { Attachment, ExternalReference } from '@weiliang79/ubl-builder/cac';
-```
-
-`ExternalReference`'s params type was exported as `ExternalReferenceAttributes`
-where every other component uses `…Params`. It is `ExternalReferenceParams`
-now. Nothing could have imported the old name.
-
-`AddressParams` named the `Address` class rather than its params type, so
-`const a: AddressParams = { streetName: '…' }` did not compile and `Address`
-had no usable params type at all. It names the type now, as every other
-`…Params` export does. Code using `AddressParams` as a value — `new
-AddressParams(…)` — should use `Address`.
-
-`IssuerPartyParams` existed on the module and was missing from the barrel;
-it is exported now.
-
-## New: reading a document back
-
-`Invoice.fromXml(xml)` and `Invoice.fromJson(document)` are the inverses of
-`getXml()` and `getJson()`. Nothing existing changes.
-
-Both walk the same tables that serialise — which is why the document map needed
-a `classRef` column and why the eight children with no setter had to be
-implemented first: a round trip cannot preserve what the document has no way to
-hold. The golden fixture reads back and renders to the same 4542 bytes, and the
-JSON fixture renders to the same XML.
-
-## `UBLExtensions` keeps what it is constructed with
-
-Its constructor assigned `this.attributes.UBLExtensions = []` immediately after
-`super()`, so anything passed in was discarded the line after `assignContent`
-stored it, and `new UBLExtensions({ UBLExtensions: [extension] })` serialised as
-an empty `<ext:UBLExtensions/>`. It now defaults rather than resets.
-`addUBLExtension` and `getDianUblExtension` are unaffected.
-
-## One `cac:AddressType`, not two
+### One `cac:AddressType`, not two
 
 `Address` and `PostalAddress` were separate classes implementing the same UBL
-type. `PostalAddress` is now an alias of `Address`, alongside `DeliveryAddress`,
+type, and had already drifted apart on four `classRef`s before this. Two files
+implementing one type is now refused by `check:classref`.
+
+`PostalAddress` is an alias of `Address`, alongside `DeliveryAddress`,
 `DespatchAddress`, `JurisdictionRegionAddress`, `RegistrationAddress`,
 `OriginAddress` and `ReturnAddress` — one class, one alias per element it
-serves, as `Party` and `TaxTotal` already work.
-
-Every name still imports: `PostalAddress`, `PostalAddressTypeParams`,
-`AddressParams`. Two things change.
+serves, as `Party` and `TaxTotal` already work. Every name still imports:
+`PostalAddress`, `PostalAddressTypeParams`, `AddressParams`.
 
 **`addressLine` is now `addressLines`.** The two implementations named the same
 child differently and the surviving one is plural, matching the convention for
@@ -298,36 +254,111 @@ new PostalAddress({ addressLine: [new AddressLine({ line: '1 Jalan Contoh' })] }
 new PostalAddress({ addressLines: [new AddressLine({ line: '1 Jalan Contoh' })] });
 ```
 
-**`getAsXml()` with no element name now returns `<cac:Address>`.** It is one
-class serving twelve elements, so there is no single right default; in a
-document the parent decides the name and nothing changes. Pass the name
-explicitly if you serialise an address on its own:
+**`getAsXml()` with no element name now returns `<cac:Address>`.** One class
+serves twelve elements, so there is no single right default; in a document the
+parent decides the name and nothing changes. Pass the name explicitly if you
+serialise an address on its own:
 
 ```ts
 address.getAsXml(false, true, 'cac:PostalAddress');
 ```
 
-`Address` previously defaulted to `cac:AddressType`, which is a type name — no
-such element exists, and that output failed XSD validation.
+`Address` previously defaulted to `cac:AddressType`, a type name for which no
+element exists — that output failed XSD validation.
 
-Nothing that goes through an `Invoice` is affected: the golden fixture is
-byte-for-byte unchanged.
+### Two exported names were wrong
+
+`AddressParams` named the `Address` class rather than its params type, so
+`const a: AddressParams = { streetName: '…' }` did not compile and `Address`
+had no usable params type at all. It names the type now. Code using it as a
+value — `new AddressParams(…)` — should use `Address`.
+
+`ExternalReference`'s params type was exported as `ExternalReferenceAttributes`
+where every other component uses `…Params`. It is `ExternalReferenceParams`
+now; nothing could have imported the old name, since the component was not in
+the barrel.
+
+## Fixed, and needing no action
+
+These were unusable or silently wrong. If you worked around one, the workaround
+can go.
+
+### Values that were being discarded
+
+`Delivery.deliveryTerms` named `UdtDate` for `cac:DeliveryTerms`, an aggregate.
+The component was rebuilt as a date and serialised as an empty element:
+
+```xml
+<cac:Delivery><cac:DeliveryTerms></cac:DeliveryTerms></cac:Delivery>
+```
+
+`UBLExtensions` assigned `this.attributes.UBLExtensions = []` immediately after
+`super()`, so anything passed to the constructor was discarded the line after
+it was stored, and `new UBLExtensions({ UBLExtensions: [extension] })`
+serialised as an empty `<ext:UBLExtensions/>`. It defaults rather than resets
+now; `addUBLExtension` and `getDianUblExtension` are unaffected.
+
+### Fields whose only accepted value threw
+
+`PaymentTerms` declared `constructor(content: string)`, so the only call its
+signature allowed threw `attribute 0 is not allowed` and every working call
+needed a cast. It takes `PaymentTermsTypeParams` now, like every other
+component.
+
+`DocumentReference.issuerParty` was declared `string` with no params-map entry
+behind it. `DocumentReference.attachment` and `.validityPeriod` were declared
+`string` against entries wrapping in `Attachment` and `ValidityPeriod`. All
+three compiled and then threw; all three take their component now.
+
+`AdditionalStreetName` was declared where the params map keyed on
+`additionalStreetName`, so the only spelling TypeScript accepted threw and the
+one that worked did not compile. `cbc:AdditionalStreetName` — address line 2,
+on every invoice with a PO box — was unreachable either way. It is
+`additionalStreetName`.
+
+This last one survived because a few components write
+`interface AllowedParams {` where the rest write `type AllowedParams = {`, and
+every generator scan matched only the second form. `DocumentReference`,
+`ItemPriceExtension` and the address component were silently exempt from all of
+them — two of the three still use the interface form, and the scans accept both
+now. `check:types` fails on a component it cannot read rather than skipping
+it.
+
+### Declarations that refused values the entry accepts
+
+Eleven fields named no class where the entry wraps one, so the declaration
+refused a wrapper the entry would have accepted. Ten are on
+`DocumentReference` — `id`, `issueDate`, `versionID` and the rest declared
+`string`, `xPath` declared `string[]` — which left no way to set a `schemeID`
+on an `id` or a `languageID` on a description. The eleventh is
+`PartyTaxScheme.exemptionReason`, declared `string[]` where the entry wraps in
+`UdtText`.
+
+Each of these widens what a field accepts, so nothing that compiles today stops
+compiling. `check:classref` holds a `classRef` to the schema; `check:types` now
+holds the declaration to the `classRef`, which is what found them. The
+corrections that go the other way are under **What breaks** above.
 
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them
-`minOccurs="0"`. `CreditNoteLine` went from demanding 23 fields to one.
-Existing code that passes them keeps compiling.
+`minOccurs="0"`. `CreditNoteLine` went from demanding 23 fields to one. Existing
+code that passes them keeps compiling.
 
-Nineteen child elements UBL defines were missing entirely and are now present:
-seventeen on `PostalAddress` — `buildingName`, `floor`, `room`, `postbox`,
-`markCare`, `district` and the rest of `AddressType` — plus
-`DocumentReference.issuerParty` and `ItemPriceExtension.taxTotals`. All are
-optional.
+Fifteen children the fork had left commented out or never transcribed are now
+settable, all optional:
 
-Fourteen params-map entries the fork had commented out are now live, including
 `CreditNoteLine.allowanceCharges`, `DeliveryTerms.allowanceCharge`,
+`ItemPriceExtension.taxTotals`, `Party.financialAccount`,
 `Signature.signatureMethod`, `Signature.signatoryParty`, the three
 `SupplierParty` contacts, and all six self-referential children —
-`Party.agentParty`, `InvoiceLine.subInvoiceLines` and the rest. All are
-optional, so nothing that compiles today stops compiling.
+`Party.agentParty`, `InvoiceLine.subInvoiceLines`,
+`CreditNoteLine.subCreditNoteLines`, `DebitNoteLine.subDebitNoteLines`,
+`Location.subsidiaryLocations` and `PriceList.previousPriceList`.
+
+If you used `PostalAddress` rather than `Address`, seventeen more children of
+`AddressType` become available: `buildingName`, `buildingNumber`, `blockName`,
+`floor`, `room`, `postbox`, `inhouseMail`, `department`, `markAttention`,
+`markCare`, `plotIdentification`, `citySubdivisionName`, `region`, `district`,
+`timezoneOffset`, `addressTypeCode` and `addressFormatCode`. `Address` already
+had them; the two classes are now the same one.
