@@ -102,10 +102,17 @@ function learnByType(
       // `classRef: null` is a deliberate placeholder in a few maps for types
       // with no component class yet; it is not a name to learn.
       if (!/^[A-Z]\w*$/.test(ref)) continue;
-      // The module recorded here becomes an import path later, so the name has
-      // to actually be a binding in this file — declared here or imported.
-      if (!declaredIn(source).has(ref) && !importsOf(source).has(ref)) continue;
-      learned.set(type, { classRef: ref, declared: ref, module: file });
+      // The module recorded here becomes an import path later, so it must be
+      // where the symbol actually lives. Declared in this file is fine; merely
+      // imported into it is not — a file that imports X does not necessarily
+      // re-export it, and pointing an import at it emits code that will not
+      // compile. When it is imported, follow the import to its real home.
+      const from = importsOf(source).get(ref);
+      if (declaredIn(source).has(ref)) {
+        learned.set(type, { classRef: ref, declared: ref, module: file });
+      } else if (from?.startsWith('./')) {
+        learned.set(type, { classRef: ref, declared: ref, module: `${from.slice(2)}.ts` });
+      }
     }
   });
 

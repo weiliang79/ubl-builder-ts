@@ -25,7 +25,7 @@ type AllowedParams = {
   /** A universally unique identifier for the referenced project */
   uuid?: string | UdtIdentifier;
   /** The date on which the referenced project was issued */
-  issueDate?: (string | UdtDate)[];
+  issueDate?: string | UdtDate;
 
   // workPhaseReference: A specific phase of work in the referenced project.
 };

@@ -35,43 +35,94 @@ interface Entry {
  * Prettier wraps longer entries across several lines, so a line-oriented
  * parser sees only a third of the files.
  */
+/**
+ * Replace every comment with the same number of spaces.
+ *
+ * Blanking rather than stripping, because every offset in this file indexes
+ * into the original source for surgical splicing — removing characters would
+ * shift them all. Newlines are kept so line-anchored patterns still work.
+ *
+ * This exists because commented-out entries were being read as live ones.
+ * ProjectReference.ts carries a commented `issueDate` naming
+ * cac:WorkPhaseReference (0..*), which overwrote the real `issueDate`
+ * (cbc:IssueDate, max 1) and pluralised a scalar field into one that throws.
+ * The same bug has now been found in three separate scans; this is the
+ * shared fix.
+ */
+function blankComments(source: string): string {
+  const out = source.split('');
+  let i = 0;
+  let quote: string | null = null;
+  while (i < source.length) {
+    const c = source[i];
+    if (quote) {
+      if (c === '\\') i += 1;
+      else if (c === quote) quote = null;
+      i += 1;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') {
+      quote = c;
+      i += 1;
+      continue;
+    }
+    if (c === '/' && source[i + 1] === '/') {
+      while (i < source.length && source[i] !== '\n') out[i++] = ' ';
+      continue;
+    }
+    if (c === '/' && source[i + 1] === '*') {
+      const end = source.indexOf('*/', i + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      for (; i < stop; i += 1) if (source[i] !== '\n') out[i] = ' ';
+      continue;
+    }
+    i += 1;
+  }
+  return out.join('');
+}
+
 function readEntries(source: string): { entries: Entry[]; bodyStart: number; bodyEnd: number } | null {
-  const open = /const (?:ParamsMap|\w*CHILDREN_MAP)[^=]*=\s*\{/.exec(source);
+  const scan = blankComments(source);
+  const open = /const (?:ParamsMap|\w*CHILDREN_MAP)[^=]*=\s*\{/.exec(scan);
   if (!open) return null;
 
   const bodyStart = (open.index as number) + open[0].length;
   let depth = 1;
   let i = bodyStart;
-  for (; i < source.length && depth > 0; i += 1) {
-    if (source[i] === '{') depth += 1;
-    else if (source[i] === '}') depth -= 1;
+  for (; i < scan.length && depth > 0; i += 1) {
+    if (scan[i] === '{') depth += 1;
+    else if (scan[i] === '}') depth -= 1;
   }
   const bodyEnd = i - 1;
   const body = source.slice(bodyStart, bodyEnd);
+  const scanBody = scan.slice(bodyStart, bodyEnd);
 
   const entries: Entry[] = [];
   let cursor = 0;
   while (cursor < body.length) {
-    const keyMatch = /(\w+):\s*\{/.exec(body.slice(cursor));
+    const keyMatch = /(\w+):\s*\{/.exec(scanBody.slice(cursor));
     if (!keyMatch) break;
     const entryStart = cursor + (keyMatch.index as number);
     let d = 0;
     let j = entryStart + keyMatch[0].length - 1;
-    for (; j < body.length; j += 1) {
-      if (body[j] === '{') d += 1;
-      else if (body[j] === '}') {
+    for (; j < scanBody.length; j += 1) {
+      if (scanBody[j] === '{') d += 1;
+      else if (scanBody[j] === '}') {
         d -= 1;
         if (d === 0) break;
       }
     }
     const raw = body.slice(entryStart, j + 1);
-    const field = (name: string) => new RegExp(`${name}:\\s*([^,}]+)`).exec(raw)?.[1].trim() ?? '';
+    // Field values are read from the blanked copy so a commented-out value
+    // inside a live entry cannot be mistaken for the real one.
+    const scanRaw = scanBody.slice(entryStart, j + 1);
+    const field = (name: string) => new RegExp(`${name}:\\s*([^,}]+)`).exec(scanRaw)?.[1].trim() ?? '';
     entries.push({
       raw,
       start: entryStart,
       end: j + 1,
       key: keyMatch[1],
-      name: /(?:attributeName|childName):\s*'([^']*)'/.exec(raw)?.[1] ?? '',
+      name: /(?:attributeName|childName):\s*'([^']*)'/.exec(scanRaw)?.[1] ?? '',
       order: field('order'),
       max: field('max') || 'undefined',
       classRef: field('classRef'),
@@ -83,14 +134,19 @@ function readEntries(source: string): { entries: Entry[]; bodyStart: number; bod
 
 /** Offsets of the `{ … }` body opened by `open`, by brace depth. */
 function bodyBounds(source: string, open: RegExp): { start: number; end: number } | null {
-  const m = open.exec(source);
+  // Counted on the blanked copy: AllowedParams bodies here are full of
+  // commented-out map entries carrying braces. They balance today, but one
+  // stray `{` in a comment would run `end` to EOF and let the rewrite below
+  // loose on the class body.
+  const scan = blankComments(source);
+  const m = open.exec(scan);
   if (!m) return null;
   const start = (m.index as number) + m[0].length;
   let depth = 1;
   let i = start;
-  for (; i < source.length && depth > 0; i += 1) {
-    if (source[i] === '{') depth += 1;
-    else if (source[i] === '}') depth -= 1;
+  for (; i < scan.length && depth > 0; i += 1) {
+    if (scan[i] === '{') depth += 1;
+    else if (scan[i] === '}') depth -= 1;
   }
   return { start, end: i - 1 };
 }
@@ -117,34 +173,56 @@ function alignOptionality(
 
   const changes: string[] = [];
   const body = source.slice(bounds.start, bounds.end);
-  const rebuilt = body.replace(
-    /^(\s{2})(\w+)(\??):([^;]+);/gm,
-    (whole, indent: string, key: string, q: string, declared: string) => {
-      const wanted = want.get(key);
-      if (!wanted) return whole; // not in the params map; leave alone
+  const scanBody = blankComments(source).slice(bounds.start, bounds.end);
 
-      const isOptional = q === '?';
-      if (isOptional !== wanted.optional) {
-        changes.push(`${key}: ${isOptional ? 'optional -> required' : 'required -> optional'}`);
-      }
+  // Matched against the blanked body so a commented-out field declaration is
+  // never rewritten, then spliced into the real one. Blanking preserves length,
+  // so the indices line up.
+  const edits: { start: number; end: number; text: string }[] = [];
+  for (const m of scanBody.matchAll(/^(\s{2})(\w+)(\??):([^;]+);/gm)) {
+    const [whole, indent, key, q] = m;
+    const wanted = want.get(key);
+    if (!wanted) continue;
 
-      // Arity has to agree with `max` or the declared type is a lie in one of
-      // two ways. Typed as an array where max is 1, toNode() throws "array
-      // given and max is defined"; typed as a scalar where the element repeats,
-      // passing several needs a cast even though the runtime accepts them.
-      let type = declared.trim();
-      const isArray = /\[\]$/.test(type);
-      if (isArray !== wanted.repeats) {
-        changes.push(`${key}: ${isArray ? 'array -> single' : 'single -> array'}`);
-        type = isArray
-          ? type.replace(/\[\]$/, '')
-          : // a union has to be parenthesised before [] binds to all of it
-            `${/\|/.test(type) ? `(${type})` : type}[]`;
-      }
+    const at = m.index as number;
+    // the declared type comes from the real source, so inline comments survive
+    const declared = body.slice(at + indent.length + key.length + q.length + 1, at + whole.length - 1);
 
-      return `${indent}${key}${wanted.optional ? '?' : ''}: ${type};`;
-    },
-  );
+    const isOptional = q === '?';
+    if (isOptional !== wanted.optional) {
+      changes.push(`${key}: ${isOptional ? 'optional -> required' : 'required -> optional'}`);
+    }
+
+    // Arity has to agree with `max` or the declared type is a lie in one of two
+    // ways. Typed as an array where max is 1, toNode() throws "array given and
+    // max is defined"; typed as a scalar where the element repeats, passing
+    // several needs a cast even though the runtime accepts them.
+    let type = declared.trim();
+    const isArray = /\[\]$/.test(type);
+    if (isArray !== wanted.repeats) {
+      changes.push(`${key}: ${isArray ? 'array -> single' : 'single -> array'}`);
+      type = wanted.repeats
+        ? // a union has to be parenthesised before [] binds to all of it
+          `${/\|/.test(type) ? `(${type})` : type}[]`
+        : // and every arm of a union has to lose its [], not just the last:
+          // `string[] | UdtText[]` must not become `string[] | UdtText`
+          type
+            .split('|')
+            .map((arm) => arm.trim().replace(/\[\]$/, ''))
+            .join(' | ');
+    }
+
+    if (isOptional === wanted.optional && isArray === wanted.repeats) continue;
+    edits.push({ start: at, end: at + whole.length, text: `${indent}${key}${wanted.optional ? '?' : ''}: ${type};` });
+  }
+
+  let rebuilt = '';
+  let cursor = 0;
+  edits.forEach((e) => {
+    rebuilt += body.slice(cursor, e.start) + e.text;
+    cursor = e.end;
+  });
+  rebuilt += body.slice(cursor);
 
   return { source: source.slice(0, bounds.start) + rebuilt + source.slice(bounds.end), changes };
 }

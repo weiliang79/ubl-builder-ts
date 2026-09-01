@@ -1,8 +1,16 @@
-import { AlternativeDeliveryLocation, CreditNoteLine, Party, PriceList } from '../../src/cac';
+import {
+  AlternativeDeliveryLocation,
+  CreditNoteLine,
+  DebitNoteLine,
+  InvoiceLine,
+  Item,
+  Party,
+  PriceList,
+} from '../../src/cac';
 
 /**
- * Four UBL types contain themselves: a Party has an AgentParty, a Location has
- * SubsidiaryLocations, and so on. Their params maps must reference the class
+ * Six UBL types contain themselves: a Party has an AgentParty, a Location has
+ * SubsidiaryLocations, an InvoiceLine has SubInvoiceLines, and so on. Their params maps must reference the class
  * the file is still in the middle of declaring, which only works through a lazy
  * `classRef: () => X` resolved on first use.
  *
@@ -39,6 +47,25 @@ describe('self-referential children', () => {
       subsidiaryLocations: [new AlternativeDeliveryLocation({})],
     });
     expect(location.parseToJson()['cac:SubsidiaryLocation']).toHaveLength(1);
+  });
+
+  it('nests an InvoiceLine inside an InvoiceLine', () => {
+    // id, lineExtensionAmount and item are minOccurs="1" on InvoiceLineType,
+    // so supplying them is the schema being enforced rather than a workaround.
+    const inner = new InvoiceLine({ id: '2', lineExtensionAmount: '10.00', item: new Item({}) });
+    const line = new InvoiceLine({
+      id: '1',
+      lineExtensionAmount: '10.00',
+      item: new Item({}),
+      subInvoiceLines: [inner],
+    });
+    expect(line.parseToJson()['cac:SubInvoiceLine']).toHaveLength(1);
+  });
+
+  it('nests a DebitNoteLine inside a DebitNoteLine', () => {
+    const inner = new DebitNoteLine({ id: '2', lineExtensionAmount: '10.00' });
+    const line = new DebitNoteLine({ id: '1', lineExtensionAmount: '10.00', subDebitNoteLines: [inner] });
+    expect(line.parseToJson()['cac:SubDebitNoteLine']).toHaveLength(1);
   });
 
   it('recurses more than one level deep', () => {

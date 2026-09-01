@@ -129,11 +129,11 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 type AllowedParams = {
   /** An invoice line subsidiary to this invoice line. */
   subInvoiceLines?: InvoiceLine[];
-  id: string | UdtIdentifier; // Mandatory
+  id: string | UdtIdentifier;
   uuid?: string | UdtIdentifier;
   notes?: string[] | UdtText[];
-  invoicedQuantity?: string | UdtQuantity; // Mandatory
-  lineExtensionAmount: string | UdtAmount; // Mandatory
+  invoicedQuantity?: string | UdtQuantity;
+  lineExtensionAmount: string | UdtAmount;
   taxPointDate?: string | UdtDate;
   accountingCostCode?: string | UdtCode;
   accountingCost?: string | UdtText;
@@ -152,8 +152,8 @@ type AllowedParams = {
   allowanceCharges?: AllowanceCharge[];
   taxTotals?: TaxTotal[];
   withholdingTaxTotal?: WithholdingTaxTotal[];
-  item: Item; // Mandatory
-  price?: Price; // Mandatory
+  item: Item;
+  price?: Price;
   deliveryTerms?: DeliveryTerms;
   // subInvoiceLine: "",
   itemPriceExtension?: ItemPriceExtension;

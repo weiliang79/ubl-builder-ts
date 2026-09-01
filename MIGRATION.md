@@ -130,6 +130,9 @@ output differs.
 `minOccurs="0"`. `CreditNoteLine` went from demanding 23 fields to one.
 Existing code that passes them keeps compiling.
 
-Ten elements the fork had commented out are now present, including
-`InvoiceLine.allowanceCharges`, `Signature.signatureMethod` and the six
-self-referential children such as `Party.agentParty`. All are optional.
+Fourteen params-map entries the fork had commented out are now live, including
+`CreditNoteLine.allowanceCharges`, `DeliveryTerms.allowanceCharge`,
+`Signature.signatureMethod`, `Signature.signatoryParty`, the three
+`SupplierParty` contacts, and all six self-referential children —
+`Party.agentParty`, `InvoiceLine.subInvoiceLines` and the rest. All are
+optional, so nothing that compiles today stops compiling.

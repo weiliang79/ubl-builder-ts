@@ -34,7 +34,8 @@ readdirSync(CAC_DIR)
     if (!map || !params) return;
 
     checked += 1;
-    const mapKeys = [...body(source, map.index + map[0].length).matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]);
+    const mapBody = body(source, map.index + map[0].length);
+    const mapKeys = [...mapBody.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]);
     const typeKeys = new Set(
       [...body(source, params.index + params[0].length).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]),
     );
@@ -42,13 +43,35 @@ readdirSync(CAC_DIR)
     mapKeys
       .filter((key) => !typeKeys.has(key))
       .forEach((key) => problems.push(`${file}: '${key}' is in the params map but not in AllowedParams`));
+
+    // Arity, which nothing compared until a regression slipped through every
+    // other gate. A field typed as an array against `max: 1` type-checks and
+    // then throws "array given and max is defined" at serialization — reachable
+    // from ordinary typed code, and invisible to tsc, check:schema and the
+    // suite. The mirror case only forces a needless cast, but both mean the
+    // declared type contradicts the map beside it.
+    const maxOf = new Map(
+      [...mapBody.matchAll(/^\s{2}(\w+):\s*\{[\s\S]*?max:\s*(\d+|undefined)/gm)].map((m) => [m[1], m[2]]),
+    );
+    for (const m of body(source, params.index + params[0].length).matchAll(/^\s{2}(\w+)\??:\s*([^;]+);/gm)) {
+      const [, key, declared] = m;
+      const max = maxOf.get(key);
+      if (max === undefined) continue;
+      const isArray = /\[\]$/.test(declared.trim());
+      const repeats = max === 'undefined';
+      if (isArray === repeats) continue;
+      problems.push(
+        `${file}: '${key}' is declared ${isArray ? 'an array' : 'a single value'} but the map says max: ${max}` +
+          (isArray ? ' — passing an array throws at serialization' : ''),
+      );
+    }
   });
 
 console.log(`checked ${checked} components`);
 if (problems.length) {
   problems.forEach((p) => console.log(`  ${p}`));
-  console.log(`\n${problems.length} field(s) unreachable from the public type`);
+  console.log(`\n${problems.length} field(s) disagree with the params map`);
   process.exitCode = 1;
 } else {
-  console.log('every params-map entry is reachable from AllowedParams');
+  console.log('every params-map entry is reachable, and arity agrees with max');
 }
