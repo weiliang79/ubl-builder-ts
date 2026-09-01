@@ -32,6 +32,17 @@ function udtClass(type: string): string {
   return `Udt${local(type).replace(/Type$/, '')}`;
 }
 
+interface Learned {
+  /** The name to import by default: the export alias matching the file name. */
+  classRef: string;
+  /** Every name the module exports the class under, so a child element can pick
+   *  the one named after it — cac:IssuerParty imports IssuerParty, not Party. */
+  aliases: string[];
+  /** The name the class statement binds, which a same-file reference must use. */
+  declared: string;
+  module: string;
+}
+
 /**
  * Map each schema type to the class that implements it.
  *
@@ -39,11 +50,8 @@ function udtClass(type: string): string {
  * an element no existing map happens to use — cac:CountryType via
  * cac:OriginCountry, say — and keying by element would miss those.
  */
-function learnByType(
-  files: string[],
-  schema: Schema,
-): Map<string, { classRef: string; declared: string; module: string }> {
-  const learned = new Map<string, { classRef: string; declared: string; module: string }>();
+function learnByType(files: string[], schema: Schema): Map<string, Learned> {
+  const learned = new Map<string, Learned>();
 
   files.forEach((file) => {
     const stem = basename(file, '.ts');
@@ -76,7 +84,7 @@ function learnByType(
     // from classRef whenever a file exports under an alias — Location.ts
     // declares LocationType and exports it as AlternativeDeliveryLocation —
     // and a same-file reference must use the binding, not the export name.
-    learned.set(key, { classRef, declared: primary, module: file });
+    learned.set(key, { classRef, aliases: names, declared: primary, module: file });
   });
 
   // Fall back to whatever existing maps already do — but only to *live* ones.
@@ -107,9 +115,9 @@ function learnByType(
       // compile. When it is imported, follow the import to its real home.
       const from = importsOf(source).get(ref);
       if (declaredIn(source).has(ref)) {
-        learned.set(type, { classRef: ref, declared: ref, module: file });
+        learned.set(type, { classRef: ref, aliases: [ref], declared: ref, module: file });
       } else if (from?.startsWith('./')) {
-        learned.set(type, { classRef: ref, declared: ref, module: `${from.slice(2)}.ts` });
+        learned.set(type, { classRef: ref, aliases: [ref], declared: ref, module: `${from.slice(2)}.ts` });
       }
     }
   });
@@ -194,6 +202,19 @@ function main(): void {
     // A 2-space-indented `key: {` inside a block comment would otherwise add a
     // phantom key and silently drop a real child.
     const usedKeys = new Set([...scan.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));
+    // Fields AllowedParams already declares. A declaration can outlive its map
+    // entry — DocumentReference carried `issuerParty?: string` with nothing in
+    // the map to serve it, so the field compiled and then threw "attribute
+    // issuerParty is not allowed" from the constructor. Appending a second
+    // `issuerParty?: IssuerParty` beside it is a duplicate identifier, so the
+    // stale one is rewritten in place instead.
+    const declaredFields = new Set(
+      [
+        ...blankComments(source)
+          .slice(paramsOpen.index + paramsOpen[0].length)
+          .matchAll(/^\s{2}(\w+)\??:/gm),
+      ].map((m) => m[1]),
+    );
 
     const additions: Addition[] = [];
     type.children.forEach((child) => {
@@ -223,10 +244,16 @@ function main(): void {
           unresolved.set(child.type, (unresolved.get(child.type) ?? 0) + 1);
           return;
         }
-        // Cross-file references import the exported name; a self-reference is
+        // One class is exported under several names, one per element it serves:
+        // Party.ts exports Party, NotifyParty, CarrierParty and IssuerParty,
+        // all the same class. Every existing map names the alias matching the
+        // element — `cac:NotifyParty` is `() => NotifyParty` — which is the
+        // only thing that makes a params map readable. A self-reference is
         // resolved in this module's own scope, where only the declared name
-        // exists. Using the export alias there is a ReferenceError at first use.
-        classRef = isSelfReferential ? known.declared : known.classRef;
+        // exists; using an export alias there is a ReferenceError at first use.
+        classRef = isSelfReferential
+          ? known.declared
+          : (known.aliases.find((a) => a === local(child.name)) ?? known.classRef);
         tsType = classRef;
         if (!existingImports.has(classRef)) from = `./${basename(known.module, '.ts')}`;
         if (from === `./${basename(file, '.ts')}`) from = null; // defined in this file
@@ -264,17 +291,39 @@ function main(): void {
       )
       .join('\n');
 
-    const paramFields = additions.map((a) => `  /** ${a.child.definition} */\n  ${a.key}?: ${a.tsType};`).join('\n');
+    const fieldFor = (a: Addition) => `  /** ${a.child.definition} */\n  ${a.key}?: ${a.tsType};`;
+    const fresh = additions.filter((a) => !declaredFields.has(a.key));
+    const restated = additions.filter((a) => declaredFields.has(a.key));
+    const paramFields = fresh.map(fieldFor).join('\n');
 
     source = `${source.slice(0, mapOpen.index! + mapOpen[0].length)}\n${mapEntries}${source.slice(
       mapOpen.index! + mapOpen[0].length,
     )}`;
 
-    scan = blankComments(source);
-    const reopened = ALLOWED_PARAMS_OPEN.exec(scan)!;
-    source = `${source.slice(0, reopened.index! + reopened[0].length)}\n${paramFields}${source.slice(
-      reopened.index! + reopened[0].length,
-    )}`;
+    if (fresh.length) {
+      scan = blankComments(source);
+      const reopened = ALLOWED_PARAMS_OPEN.exec(scan)!;
+      source = `${source.slice(0, reopened.index! + reopened[0].length)}\n${paramFields}${source.slice(
+        reopened.index! + reopened[0].length,
+      )}`;
+    }
+
+    // Rewritten last so the offsets above stay valid, and matched on the
+    // blanked copy so a commented-out declaration of the same name is left
+    // alone. One at a time, because each rewrite moves everything after it.
+    restated.forEach((a) => {
+      scan = blankComments(source);
+      // Anchored inside the AllowedParams body, and matched a line at a time.
+      // Searching the whole file found the params-map entry of the same name
+      // first, where `[^;]*;` ran on to the map's own closing `};` — one
+      // rewrite swallowed the entire map. A declaration is one line.
+      const opened = ALLOWED_PARAMS_OPEN.exec(scan)!;
+      const from = opened.index + opened[0].length;
+      const at = new RegExp(`^  ${a.key}\\??:[^\\n]*;$`, 'm').exec(scan.slice(from));
+      if (!at) return;
+      const start = from + at.index;
+      source = `${source.slice(0, start)}  ${a.key}?: ${a.tsType};${source.slice(start + at[0].length)}`;
+    });
 
     // add any imports the new entries need
     const byModule = new Map<string, string[]>();
@@ -295,7 +344,12 @@ function main(): void {
           `import { ${merged.join(', ')} } from '${module}';` +
           source.slice(at + existing[0].length);
       } else {
-        source = `import { ${unique.join(', ')} } from '${module}';\n${source}`;
+        // After the last existing import, not at offset 0: prepending put the
+        // line above DocumentReference.ts's leading tslint pragma and above
+        // every other file's core import, which reads like a mistake and is.
+        const imports = [...blankComments(source).matchAll(/^import .*;$/gm)];
+        const at = imports.length ? imports[imports.length - 1].index! + imports[imports.length - 1][0].length : 0;
+        source = `${source.slice(0, at)}\nimport { ${unique.join(', ')} } from '${module}';${source.slice(at)}`;
       }
     });
 

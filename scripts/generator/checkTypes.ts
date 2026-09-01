@@ -58,6 +58,17 @@ readdirSync(CAC_DIR)
       .filter((key) => !typeKeys.has(key))
       .forEach((key) => problems.push(`${file}: '${key}' is in the params map but not in AllowedParams`));
 
+    // The other direction, which nothing checked. A declaration can outlive its
+    // map entry: DocumentReference carried `issuerParty?: string` with nothing
+    // in the map to serve it, so the field compiled and then threw "attribute
+    // issuerParty is not allowed" from the constructor — a field offered by the
+    // type and refused by the runtime. Both directions are the same defect,
+    // and only one of them was being caught.
+    const mapKeySet = new Set(mapKeys);
+    [...typeKeys]
+      .filter((key) => !mapKeySet.has(key))
+      .forEach((key) => problems.push(`${file}: '${key}' is declared in AllowedParams but not in the params map`));
+
     // Arity, which nothing compared until a regression slipped through every
     // other gate. A field typed as an array against `max: 1` type-checks and
     // then throws "array given and max is defined" at serialization — reachable
@@ -94,5 +105,5 @@ if (problems.length) {
   console.log(`\n${problems.length} field(s) disagree with the params map`);
   process.exitCode = 1;
 } else {
-  console.log('every params-map entry is reachable, and arity agrees with max');
+  console.log('params map and AllowedParams agree on every key, and arity agrees with max');
 }
