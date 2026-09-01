@@ -164,16 +164,22 @@ export function schemaTypeFor(stem: string, schema: Schema): SchemaType | undefi
  * MinimumDeliveryUnit`, which reads like a copy-paste slip and is in fact the
  * same class twice. Anything comparing a declared type to a classRef has to
  * know that before it starts reporting.
+ *
+ * Only classes. Every file also writes `AllowedParams as SomethingParams`, and
+ * grouping by name alone made `AllowedParams` a hub joining all 61 of those
+ * into one group — a set that would have let the declaration check accept any
+ * of 61 unrelated names had a classRef ever landed in it.
  */
 export function aliasGroups(files: string[]): Map<string, Set<string>> {
   const groups = new Map<string, Set<string>>();
 
   files.forEach((file) => {
     const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
+    const classes = declaredIn(source);
     for (const block of source.matchAll(/export \{([^}]+)\}/g)) {
       for (const part of block[1].split(',')) {
         const [from, to] = part.split(/\s+as\s+/).map((x) => x.trim());
-        if (!from) continue;
+        if (!from || !classes.has(from)) continue;
         const names = [from, to ?? from];
         const merged = new Set<string>(names);
         names.forEach((n) => groups.get(n)?.forEach((x) => merged.add(x)));

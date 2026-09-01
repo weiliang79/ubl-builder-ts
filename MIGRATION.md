@@ -209,11 +209,12 @@ value either type accepted was built as a component out of a string and threw
 `attribute 0 is not allowed`. Neither field was usable at all; both take their
 component now.
 
-Ten more on `DocumentReference` were declared `string` where the entry wraps in
-a datatype — `id`, `issueDate`, `versionID` and so on. Those worked, but the
-declaration refused the wrapper, so there was no way to set `schemeID` on an
-`id` or a `languageID` on a description. They are `string | Udt…` now, matching
-every other component.
+Ten more on `DocumentReference` named no class at all where the entry wraps in
+a datatype: nine declared `string` — `id`, `issueDate`, `versionID` and the
+rest — and `xPath` declared `string[]`. Those worked, but the declaration
+refused the wrapper, so there was no way to set `schemeID` on an `id` or a
+`languageID` on a description. They take `string | Udt…` now, matching every
+other component.
 
 Three named the wrong class outright: `Address.countrySubentityCode` said
 `UdtText` against a `UdtCode` entry, `CreditNoteLine.accountingCost` said
