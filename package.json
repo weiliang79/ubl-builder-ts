@@ -54,7 +54,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "prepublishOnly": "npm run build && npm run lint && npm run typecheck && npm run check:schema && npm run check:types && npm test && npm run validate:xsd",
+    "prepublishOnly": "npm run build && npm run lint && npm run typecheck && npm run check:schema && npm run check:types && npm run check:classref && npm test && npm run validate:xsd",
     "preversion": "npm run lint",
     "version": "npm run format && git add -A src",
     "postversion": "git push --follow-tags",
@@ -63,7 +63,8 @@
     "generate:cac": "ts-node --project tsconfig.json scripts/generator/emit.ts",
     "check:schema": "ts-node --project tsconfig.json scripts/generator/emit.ts --check",
     "generate:complete": "ts-node --project tsconfig.json scripts/generator/complete.ts",
-    "check:types": "ts-node --project tsconfig.json scripts/generator/checkTypes.ts"
+    "check:types": "ts-node --project tsconfig.json scripts/generator/checkTypes.ts",
+    "check:classref": "ts-node --project tsconfig.json scripts/generator/checkClassRef.ts"
   },
   "repository": {
     "type": "git",

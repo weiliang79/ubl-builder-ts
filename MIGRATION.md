@@ -157,6 +157,79 @@ the constructor. `cac:IssuerParty` now works.
 new DespatchDocumentReference({ id: 'DN-1', issuerParty: new IssuerParty({ … }) });
 ```
 
+## Nine fields were wired to the wrong class
+
+A params-map entry's `classRef` decides what a raw value is wrapped in, and
+nothing compared it to the schema until now. `npm run check:classref` does.
+
+`Delivery.deliveryTerms` named `UdtDate` for `cac:DeliveryTerms`, an aggregate.
+The component was rebuilt as a date and serialised as an empty element, so the
+content was silently discarded:
+
+```xml
+<cac:Delivery><cac:DeliveryTerms></cac:DeliveryTerms></cac:Delivery>
+```
+
+It is `DeliveryTerms[]` now, and the children survive.
+
+The other eight named the wrong datatype, which kept the text but carried the
+wrong attribute set — so typed code with no casts in it could emit XML the XSD
+rejects. `AllowanceCharge.multiplierFactorNumeric` was `UdtAmount` against a
+NumericType, and an `UdtAmount` carries `currencyID`:
+
+```
+element MultiplierFactorNumeric: Schemas validity error :
+  attribute 'currencyID': The attribute 'currencyID' is not allowed.
+```
+
+| Component            | Field                       | Was             | Now                     |
+| -------------------- | --------------------------- | --------------- | ----------------------- |
+| `AllowanceCharge`    | `multiplierFactorNumeric`   | `UdtAmount`     | `UdtNumeric`            |
+| `DocumentReference`  | `documentDescription`       | `string[]`      | `(string \| UdtText)[]` |
+| `OrderLineReference` | `lineStatusCode`            | `UdtIdentifier` | `UdtCode`               |
+| `PaymentTerms`       | `settlementDiscountPercent` | `UdtCode`       | `UdtPercent`            |
+| `PostalAddress`      | `streetName`                | `UdtText`       | `UdtName`               |
+| `PostalAddress`      | `additionalStreetName`      | `UdtText`       | `UdtName`               |
+| `PostalAddress`      | `cityName`                  | `UdtText`       | `UdtName`               |
+| `PostalAddress`      | `countrySubentityCode`      | `UdtText`       | `UdtCode`               |
+
+Passing a plain string is unaffected — that is how most values arrive, and it
+was always wrapped correctly on the way out. Only code constructing the wrapper
+itself needs to change, and only where the old wrapper was the wrong one.
+
+## Fifteen fields were declared as something other than what they build
+
+`check:classref` holds the `classRef` to the schema; `check:types` now holds the
+declaration to the `classRef`. Without the second, a field can be wrapped
+correctly and still be declared as something else.
+
+`DocumentReference.attachment` and `.validityPeriod` were declared `string`
+against entries that wrap in `Attachment` and `ValidityPeriod`, so the only
+value either type accepted was built as a component out of a string and threw
+`attribute 0 is not allowed`. Neither field was usable at all; both take their
+component now.
+
+Ten more on `DocumentReference` named no class at all where the entry wraps in
+a datatype: nine declared `string` — `id`, `issueDate`, `versionID` and the
+rest — and `xPath` declared `string[]`. Those worked, but the declaration
+refused the wrapper, so there was no way to set `schemeID` on an `id` or a
+`languageID` on a description. They take `string | Udt…` now, matching every
+other component.
+
+Three named the wrong class outright: `Address.countrySubentityCode` said
+`UdtText` against a `UdtCode` entry, `CreditNoteLine.accountingCost` said
+`UdtAmount` against `UdtText`, and `PartyTaxScheme.exemptionReason` was
+`string[]` where the entry wraps in `UdtText`.
+
+All of these widen or correct what a field accepts. Code passing plain strings
+is unaffected.
+
+## `PaymentTerms` takes its params, not a string
+
+`constructor(content: string)` meant the only call its signature allowed threw
+`attribute 0 is not allowed`, and every working call needed a cast. It takes
+`PaymentTermsTypeParams` now, like every other component.
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them

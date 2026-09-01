@@ -3,6 +3,7 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtDate, UdtIdentifier, UdtQuantity, UdtTime } from '../datatypes/udt';
 import { DeliveryAddress } from './Address';
+import { DeliveryTerms } from './DeliveryTerms';
 import { MaximumDeliveryUnit, MinimumDeliveryUnit } from './DeliveryUnit';
 import { Despatch } from './Despatch';
 import { AlternativeDeliveryLocation, DeliveryLocation } from './Location';
@@ -85,7 +86,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   deliveryParty: { order: 18, attributeName: 'cac:DeliveryParty', max: 1, classRef: () => DeliveryParty },
   notifyParties: { order: 19, attributeName: 'cac:NotifyParty', max: undefined, classRef: () => NotifyParty },
   despatch: { order: 20, attributeName: 'cac:Despatch', max: 1, classRef: () => Despatch },
-  deliveryTerms: { order: 21, attributeName: 'cac:DeliveryTerms', max: undefined, classRef: UdtDate },
+  deliveryTerms: { order: 21, attributeName: 'cac:DeliveryTerms', max: undefined, classRef: () => DeliveryTerms },
   minimumDeliveryUnit: {
     order: 22,
     attributeName: 'cac:MinimumDeliveryUnit',
@@ -123,7 +124,7 @@ type AllowedParams = {
   deliveryParty?: DeliveryParty;
   notifyParties?: NotifyParty[];
   despatch?: Despatch;
-  deliveryTerms?: UdtDate[];
+  deliveryTerms?: DeliveryTerms[];
   minimumDeliveryUnit?: MinimumDeliveryUnit;
   maximumDeliveryUnit?: MaximumDeliveryUnit;
   shipment?: ShipmentType;

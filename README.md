@@ -82,7 +82,8 @@ not published.
 ```sh
 npm run report:schema     # differences between the components and the schemas
 npm run check:schema      # fail if any params map disagrees (runs in CI)
-npm run check:types       # fail if a params map entry is unreachable from its params type
+npm run check:types       # fail if a params map and its params type disagree on a key
+npm run check:classref    # fail if a classRef is not the class implementing that element's type
 npm run validate:xsd      # validate the golden fixtures against the XSD
 ```
 

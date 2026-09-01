@@ -83,7 +83,7 @@ type AllowedParams = {
   /** The political or administrative division of a country in which this address is located, such as the name of its county, province, or state, expressed as text */
   countrySubentity?: string | UdtText;
   /** The political or administrative division of a country in which this address is located, such as a county, province, or state, expressed as a code (typically nationally agreed) */
-  countrySubentityCode?: string | UdtText;
+  countrySubentityCode?: string | UdtCode;
   /** An unstructured address line */
   addressLines?: AddressLine[];
   /**  The country in which this address is situated */

@@ -1,5 +1,5 @@
 import GenericAggregateComponent from '../core/GenericAggregateComponent';
-import { UdtIdentifier } from '../datatypes/udt';
+import { UdtCode, UdtIdentifier } from '../datatypes/udt';
 import { OrderReference } from './OrderReference';
 
 // const GenericAggregateComponent = require("./GenericAggregateComponent");
@@ -26,7 +26,7 @@ const ParamsMap = {
   lineID: { order: 1, attributeName: 'cbc:LineID', max: 1, classRef: UdtIdentifier },
   salesOrderLineID: { order: 2, attributeName: 'cbc:SalesOrderLineID', max: 1, classRef: UdtIdentifier },
   uuid: { order: 3, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
-  lineStatusCode: { order: 4, attributeName: 'cbc:LineStatusCode', max: 1, classRef: UdtIdentifier },
+  lineStatusCode: { order: 4, attributeName: 'cbc:LineStatusCode', max: 1, classRef: UdtCode },
   orderReference: { order: 5, attributeName: 'cac:OrderReference', max: 1, classRef: () => OrderReference },
 };
 
@@ -34,7 +34,7 @@ type AllowedParams = {
   lineID: string | UdtIdentifier;
   salesOrderLineID?: string | UdtIdentifier;
   uuid?: string | UdtIdentifier;
-  lineStatusCode?: string | UdtIdentifier;
+  lineStatusCode?: string | UdtCode;
   orderReference?: OrderReference;
 };
 

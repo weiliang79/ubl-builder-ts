@@ -41,5 +41,6 @@ jobs:
     - run: npm run validate:xsd
     - run: npm run check:schema
     - run: npm run check:types
+    - run: npm run check:classref
     - run: npm run build --if-present
     - run: npm test
