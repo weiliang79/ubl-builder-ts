@@ -615,27 +615,24 @@ export default class Invoice {
   }
 
   /**
-   * 37.  The payee.
-   * @param { any } input
-   * @returns {Invoice}
+   * 37. The payee.
+   * @param value
    */
   setPayeeParty(value: PayeeParty | PartyParams): Invoice {
     return this.assignChild('payeeParty', value);
   }
 
   /**
-   * 38.  The buyer
-   * @param { any } input
-   * @returns {Invoice}
+   * 38. The buyer.
+   * @param value
    */
   setBuyerCustomerParty(value: BuyerCustomerParty | CustomerPartyParams): Invoice {
     return this.assignChild('buyerCustomerParty', value);
   }
 
   /**
-   * 39.  The seller
-   * @param { any } input
-   * @returns {Invoice}
+   * 39. The seller.
+   * @param value
    */
   setSellerSupplierParty(value: SellerSupplierParty | SupplierPartyTypeParams): Invoice {
     return this.assignChild('sellerSupplierParty', value);
@@ -688,7 +685,7 @@ export default class Invoice {
   }
 
   /**
-   * 44 PrepaidPayment, PaymentTypeParams
+   * 44. A set of payment terms associated with this document.
    * @param value
    */
   addPaymentTerm(value: PaymentTerms | PaymentTermsTypeParams): Invoice {
@@ -722,7 +719,7 @@ export default class Invoice {
   }
 
   /**
-   * 47 A discount or charge that applies to a price component..
+   * 47. The exchange rate between the document currency and the tax currency.
    * @param value
    */
   setTaxExchangeRate(value: TaxExchangeRate | ExchangeRateParams): Invoice {
@@ -730,7 +727,7 @@ export default class Invoice {
   }
 
   /**
-   * 48 The exchange rate between the document currency and the pricing currency..
+   * 48. The exchange rate between the document currency and the pricing currency.
    * @param value
    */
   setPricingExchangeRate(value: PricingExchangeRate | ExchangeRateParams): Invoice {
@@ -747,8 +744,8 @@ export default class Invoice {
   }
 
   /**
-   * 50 The exchange rate between the document currency and the payment alternative currency.
-   * @param { any } value
+   * 50. The exchange rate between the document currency and the payment alternative currency.
+   * @param value
    */
   setPaymentAlternativeExchangeRate(value: PaymentAlternativeExchangeRate | ExchangeRateParams): Invoice {
     return this.assignChild('paymentAlternativeExchangeRate', value);
@@ -769,8 +766,8 @@ export default class Invoice {
   }
 
   /**
-   * 52 the total withholding tax
-   * @param { any } value
+   * 52. The total withholding tax.
+   * @param value
    */
   addWithholdingTaxTotal(value: WithholdingTaxTotal | TaxTotalTypeParams): Invoice {
     return this.assignChild('withholdingTaxTotals', value);

@@ -233,6 +233,7 @@ if (!docType || !docBounds) {
   const docBody = docSource.slice(docBounds.start, docBounds.end);
   const positions = new Map(docType.children.map((c, i) => [c.name, { child: c, position: i + 1 }]));
   const covered = new Set<string>();
+  const declaredRef = new Map<string, string>();
 
   for (const m of docBody.matchAll(/^\s{2}(\w+):\s*\{((?:[^{}]|\{[^{}]*\})*)\}/gm)) {
     const [, key, entry] = m;
@@ -241,6 +242,8 @@ if (!docType || !docBounds) {
     const order = Number(/order:\s*(\d+)/.exec(entry)?.[1]);
     const max = /max:\s*(\d+)/.exec(entry)?.[1];
     if (!element || !ref) continue;
+
+    declaredRef.set(key, ref);
 
     const found = positions.get(element);
     if (!found) {
@@ -262,6 +265,32 @@ if (!docType || !docBounds) {
   }
 
   docType.children.filter((c) => !covered.has(c.name)).forEach((c) => docProblems.push(`(missing): ${c.name}`));
+
+  // The forty-five setters written before the map had a classRef each restate
+  // their own class, so the map is a second copy. Serialisation uses whatever
+  // the setter built and the parser uses the map, which means a disagreement
+  // shows up only as two paths producing different objects — the quietest kind.
+  // Setters added since read the map through assignChild and have no copy to
+  // disagree with, which is why they are absent here rather than unchecked.
+  const invoiceSource = blankComments(readFileSync(join(DOC_DIR, 'Invoice.ts'), 'utf8'));
+  const builds = new Map<string, string>();
+  const note = (key: string, cls: string) => {
+    if (!builds.has(key)) builds.set(key, cls);
+  };
+  for (const m of invoiceSource.matchAll(/this\.children\.(\w+)\s*=\s*[\s\S]{0,120}?new (\w+)\(/g)) note(m[1], m[2]);
+  for (const m of invoiceSource.matchAll(/this\.children\.(\w+)\.push\(new (\w+)\(/g)) note(m[1], m[2]);
+  for (const m of invoiceSource.matchAll(
+    /const itemToPush =[\s\S]{0,160}?new (\w+)\([\s\S]{0,240}?this\.children\.(\w+)\.push\(itemToPush\)/g,
+  )) {
+    note(m[2], m[1]);
+  }
+
+  for (const [key, built] of builds) {
+    const declared = declaredRef.get(key);
+    if (declared && declared !== built) {
+      docProblems.push(`${key}: the setter builds ${built}, the map says ${declared}`);
+    }
+  }
 }
 
 console.log(`compared ${compared} classRefs across ${readdirSync(CAC_DIR).length - 1} components`);
