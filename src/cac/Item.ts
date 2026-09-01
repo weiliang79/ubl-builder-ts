@@ -1,11 +1,11 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtIndicator, UdtName, UdtQuantity, UdtText } from '../datatypes/udt';
 import { UdtNumeric } from '../datatypes/udt/UdtNumeric';
+import { OriginAddress } from './Address';
 import { CommodityClassification } from './CommodityClassification';
 import { Country } from './Country';
 import { DocumentReference } from './DocumentReference';
 import { Party } from './Party';
-import { PostalAddress } from './PostalAddress';
 import { SellersItemIdentification } from './SellersItemIdentification';
 import { ClassifiedTaxCategory } from './TaxCategory';
 
@@ -147,7 +147,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     order: 27,
     attributeName: 'cac:OriginAddress',
     max: undefined,
-    classRef: () => PostalAddress,
+    classRef: () => OriginAddress,
   },
   // ItemIdentificationType
 };
@@ -173,7 +173,7 @@ type AllowedParams = {
   /** The party responsible for specification of this item. */
   informationContentProviderParty?: Party;
   /** A region (not country) of origin of this item. */
-  originAddresses?: PostalAddress[];
+  originAddresses?: OriginAddress[];
   name?: string | UdtName;
   descriptions?: UdtText[];
   packQuantity?: string | UdtQuantity;

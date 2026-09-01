@@ -1,7 +1,7 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtIdentifier, UdtName } from '../datatypes/udt';
+import { PostalAddress } from './Address';
 import { FinancialInstitution } from './FinancialInstitution';
-import { PostalAddress } from './PostalAddress';
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },

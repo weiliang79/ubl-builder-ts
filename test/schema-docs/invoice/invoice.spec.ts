@@ -84,7 +84,7 @@ describe('Invoice', () => {
         cityName: 'Pulau Pinang',
         postalZone: '11700',
         countrySubentityCode: '07',
-        addressLine: [
+        addressLines: [
           new AddressLine({ line: 'The Summit Batu Pahat 88 Jalan Bakau Condong' }),
           new AddressLine({ line: 'Batu Pahat' }),
         ],
@@ -138,7 +138,7 @@ describe('Invoice', () => {
         cityName: 'Pulau Pinang',
         postalZone: '11700',
         countrySubentityCode: '07',
-        addressLine: [
+        addressLines: [
           new AddressLine({ line: 'The Summit Batu Pahat 88 Jalan Bakau Condong' }),
           new AddressLine({ line: 'Batu Pahat' }),
         ],

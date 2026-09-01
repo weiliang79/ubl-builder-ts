@@ -64,7 +64,7 @@ export function buildMyInvoisInvoice(): Invoice {
       cityName: 'KUALA LUMPUR',
       postalZone: '50000',
       countrySubentityCode: '14',
-      addressLine: [new AddressLine({ line: '1 Jalan Contoh' })],
+      addressLines: [new AddressLine({ line: '1 Jalan Contoh' })],
       country: new Country({
         identificationCode: new UdtCode('MYS', COUNTRY_CODE_ATTRIBUTES),
       }),
@@ -86,7 +86,7 @@ export function buildMyInvoisInvoice(): Invoice {
       cityName: 'KUALA LUMPUR',
       postalZone: '50000',
       countrySubentityCode: '14',
-      addressLine: [new AddressLine({ line: '2 Jalan Contoh' }), new AddressLine({ line: 'Taman Contoh' })],
+      addressLines: [new AddressLine({ line: '2 Jalan Contoh' }), new AddressLine({ line: 'Taman Contoh' })],
       country: new Country({
         identificationCode: new UdtCode('MYS', COUNTRY_CODE_ATTRIBUTES),
       }),

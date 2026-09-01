@@ -1,11 +1,11 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtCode, UdtIdentifier, UdtIndicator, UdtMeasure, UdtQuantity, UdtText } from '../datatypes/udt';
 import { UdtAmount } from '../datatypes/udt/UdtAmount';
+import { OriginAddress, ReturnAddress } from './Address';
 import { AllowanceCharge } from './AllowanceCharge';
 import { Country } from './Country';
 import { Delivery } from './Delivery';
 import { AlternativeDeliveryLocation } from './Location';
-import { PostalAddress } from './PostalAddress';
 
 /*
 
@@ -122,8 +122,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   },
   ConsignmentQuantity: { order: 21, attributeName: 'cbc:ConsignmentQuantity', max: 1, classRef: UdtQuantity },
   delivery: { order: 25, attributeName: 'cac:Delivery', max: 1, classRef: () => Delivery },
-  returnAddress: { order: 27, attributeName: 'cac:ReturnAddress', max: 1, classRef: () => PostalAddress },
-  originAddress: { order: 28, attributeName: 'cac:OriginAddress', max: 1, classRef: () => PostalAddress },
+  returnAddress: { order: 27, attributeName: 'cac:ReturnAddress', max: 1, classRef: () => ReturnAddress },
+  originAddress: { order: 28, attributeName: 'cac:OriginAddress', max: 1, classRef: () => OriginAddress },
   firstArrivalPortLocation: {
     order: 29,
     attributeName: 'cac:FirstArrivalPortLocation',
@@ -161,9 +161,9 @@ type AllowedParams = {
   /** The delivery of this shipment. */
   delivery?: Delivery;
   /** The address to which a shipment should be returned. */
-  returnAddress?: PostalAddress;
+  returnAddress?: ReturnAddress;
   /** The region in which the goods have been produced or manufactured, according to criteria laid down for the purposes of application of the customs tariff, or of quantitative restrictions, or of any other measure related to trade. */
-  originAddress?: PostalAddress;
+  originAddress?: OriginAddress;
   /** The first arrival location of a shipment. This would be a port for sea, an airport for air, a terminal for rail, or a border post for land crossing. */
   firstArrivalPortLocation?: AlternativeDeliveryLocation;
   /** The final exporting location for a shipment. This would be a port for sea, an airport for air, a terminal for rail, or a border post for land crossing. */

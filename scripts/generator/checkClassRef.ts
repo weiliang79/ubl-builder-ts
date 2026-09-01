@@ -212,6 +212,25 @@ readdirSync(CAC_DIR)
     }
   });
 
+// One file per schema type.
+//
+// Address.ts and PostalAddress.ts both implemented cac:AddressType, and no gate
+// could see it: each is compared to the schema on its own, so two copies stay
+// valid while drifting from each other. They had, on four classRefs, and the
+// agreement they ended up in was restored by hand rather than enforced. A
+// second implementation is not a defect the other checks can express, so it is
+// refused outright.
+const filesByType = new Map<string, string[]>();
+readdirSync(CAC_DIR)
+  .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
+  .forEach((file) => {
+    const type = schemaTypeFor(file.replace(/\.ts$/, ''), schema);
+    if (!type) return;
+    const key = `cac:${type.name}`;
+    filesByType.set(key, [...(filesByType.get(key) ?? []), file]);
+  });
+const duplicated = [...filesByType.entries()].filter(([, files]) => files.length > 1);
+
 // The document map, which nothing has ever gated. It is not a params map and
 // Invoice is not a GenericAggregateComponent, so check:schema and check:types
 // both pass over it — and it decides the element name, sequence position,
@@ -318,6 +337,14 @@ if (problems.length) {
   process.exitCode = 1;
 } else {
   console.log('every classRef names the class implementing its schema type');
+}
+
+if (duplicated.length) {
+  console.log(`\n${duplicated.length} schema type(s) implemented by more than one file:`);
+  duplicated.forEach(([type, files]) => console.log(`  ${type}: ${files.join(', ')}`));
+  process.exitCode = 1;
+} else {
+  console.log(`\n${filesByType.size} schema types, each implemented by exactly one file`);
 }
 
 console.log(`\ncompared ${docCompared} children of doc:InvoiceType`);
