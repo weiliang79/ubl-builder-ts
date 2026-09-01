@@ -2,18 +2,27 @@ import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 /**
- * Every params-map entry must have a matching field on AllowedParams.
+ * A component has to agree with the params map beside it, and be reachable.
  *
- * check:schema holds the map to the OASIS schemas, but nothing held the
- * TypeScript type beside it to the map — so a field could exist in the map and
- * be unusable, which is what happened to the six BillingReference entries
- * revived in step 6.
+ * check:schema holds the map to the OASIS schemas and check:classref holds each
+ * classRef to the type it implements. This holds everything else that decides
+ * whether a field can actually be used:
+ *
+ *   - every map entry has a field on AllowedParams, and every field has an
+ *     entry (a field with no entry compiles and then throws)
+ *   - the declared arity matches `max` (an array against max: 1 throws at
+ *     serialization)
+ *   - the declared type names the class the value is wrapped in
+ *   - the constructor accepts AllowedParams rather than something else
+ *   - the class is exported from the cac barrel, which is the only way in:
+ *     `./cac/<file>` is not an exported subpath of the package
+ *
+ * Each of these was found the hard way, by a field that compiled and could not
+ * work.
  */
 
-import { aliasGroups, CAC_DIR as COMPONENTS_DIR } from './components';
+import { aliasGroups, CAC_DIR } from './components';
 import { ALLOWED_PARAMS_OPEN, blankComments, bodyBounds } from './source';
-
-const CAC_DIR = join(__dirname, '..', '..', 'src', 'cac');
 
 /** The body `open` introduces, as text. `source` is already comment-blanked. */
 function slice(source: string, open: RegExp): string {
@@ -21,7 +30,7 @@ function slice(source: string, open: RegExp): string {
   return bounds ? source.slice(bounds.start, bounds.end) : '';
 }
 
-const aliases = aliasGroups(readdirSync(COMPONENTS_DIR).filter((f) => f.endsWith('.ts') && f !== 'index.ts'));
+const aliases = aliasGroups(readdirSync(CAC_DIR).filter((f) => f.endsWith('.ts') && f !== 'index.ts'));
 
 let checked = 0;
 const problems: string[] = [];
@@ -134,11 +143,50 @@ readdirSync(CAC_DIR)
     }
   });
 
+// The barrel is the only way in. `./cac/<file>` is not an exported subpath, so
+// a component class the barrel omits cannot be named by any consumer at all —
+// seven of them could not, Attachment and ExternalReference among them, which
+// DocumentReference.attachment needs before anyone can set it.
+const barrel = blankComments(readFileSync(join(CAC_DIR, 'index.ts'), 'utf8'));
+const barrelBody = bodyBounds(barrel, /export \{/);
+const exportedNames = new Set(
+  (barrelBody ? barrel.slice(barrelBody.start, barrelBody.end) : '')
+    .split(',')
+    .map((n) => n.trim())
+    .filter(Boolean),
+);
+readdirSync(CAC_DIR)
+  .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
+  .forEach((file) => {
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
+    const published = new Set<string>();
+
+    // All 52 components publish through a trailing `export { … }` today, but
+    // `export class Foo` is the same thing and would have been invisible here.
+    for (const m of source.matchAll(/^export (?:default )?(?:abstract )?class (\w+)/gm)) published.add(m[1]);
+    // Params types as well as classes: a module that exports a name meant it to
+    // be used, and the barrel is the only place it can be used from.
+    // IssuerPartyParams was the one the class-only version missed.
+    for (const block of source.matchAll(/export \{([^}]+)\}/g)) {
+      for (const part of block[1].split(',')) {
+        const [from, to] = part.split(/\s+as\s+/).map((x) => x.trim());
+        if (from) published.add(to ?? from);
+      }
+    }
+
+    published.forEach((name) => {
+      if (exportedNames.has(name)) return;
+      problems.push(
+        `index.ts: '${name}' is exported by ${file} but not by the barrel, so nothing outside can import it`,
+      );
+    });
+  });
+
 console.log(`checked ${checked} components`);
 if (problems.length) {
   problems.forEach((p) => console.log(`  ${p}`));
-  console.log(`\n${problems.length} problem(s) — a params map, its declared type and its constructor must agree`);
+  console.log(`\n${problems.length} problem(s) — a component must agree with its params map, and be exported`);
   process.exitCode = 1;
 } else {
-  console.log('every key, arity, declared type and constructor agrees with the params map');
+  console.log('every key, arity, declared type and constructor agrees, and every component is exported');
 }

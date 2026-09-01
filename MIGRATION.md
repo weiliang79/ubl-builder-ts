@@ -230,6 +230,32 @@ is unaffected.
 `attribute 0 is not allowed`, and every working call needed a cast. It takes
 `PaymentTermsTypeParams` now, like every other component.
 
+## Seven components became reachable
+
+`Attachment`, `CommodityClassification`, `ExternalReference`,
+`FinancialInstitution`, `FinancialInstitutionBranch`, `ItemPriceExtension` and
+`SellersItemIdentification` were missing from the `cac` barrel. Since
+`./cac/<file>` is not an exported subpath, nothing outside the package could
+name them at all — `DocumentReference.attachment` could not be set because
+there was no way to build an `Attachment`.
+
+```ts
+import { Attachment, ExternalReference } from '@weiliang79/ubl-builder/cac';
+```
+
+`ExternalReference`'s params type was exported as `ExternalReferenceAttributes`
+where every other component uses `…Params`. It is `ExternalReferenceParams`
+now. Nothing could have imported the old name.
+
+`AddressParams` named the `Address` class rather than its params type, so
+`const a: AddressParams = { streetName: '…' }` did not compile and `Address`
+had no usable params type at all. It names the type now, as every other
+`…Params` export does. Code using `AddressParams` as a value — `new
+AddressParams(…)` — should use `Address`.
+
+`IssuerPartyParams` existed on the module and was missing from the barrel;
+it is exported now.
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them

@@ -51,4 +51,4 @@ class ExternalReference extends GenericAggregateComponent {
   }
 }
 
-export { ExternalReference, AllowedParams as ExternalReferenceAttributes };
+export { ExternalReference, AllowedParams as ExternalReferenceParams };
