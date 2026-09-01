@@ -71,4 +71,8 @@ class CustomerParty extends GenericAggregateComponent {
   }
 }
 
-export { CustomerParty as AccountingCustomerParty, AllowedParams as CustomerPartyParams };
+export {
+  CustomerParty as AccountingCustomerParty,
+  CustomerParty as BuyerCustomerParty,
+  AllowedParams as CustomerPartyParams,
+};

@@ -80,4 +80,8 @@ class AccountingSupplierParty extends GenericAggregateComponent {
   }
 }
 
-export { AccountingSupplierParty, AllowedParams as SupplierPartyTypeParams };
+export {
+  AccountingSupplierParty,
+  AccountingSupplierParty as SellerSupplierParty,
+  AllowedParams as SupplierPartyTypeParams,
+};

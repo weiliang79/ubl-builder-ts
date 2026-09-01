@@ -45,7 +45,9 @@ interface Problem {
 
 const problems: Problem[] = [];
 const uncomparable: string[] = [];
+const docProblems: string[] = [];
 let compared = 0;
+let docCompared = 0;
 
 /**
  * Every name that implements each schema type.
@@ -114,6 +116,43 @@ function buildImplementers(): Map<string, Set<string>> {
 
 const implementers = buildImplementers();
 
+/**
+ * `class X extends Y` across the datatype and component trees.
+ *
+ * A specialisation is still the type it specialises. `cbc:UBLVersionID` is
+ * `udt:IdentifierType` in the schema, and this library gives it its own class
+ * — `UBLVersionID extends UdtIdentifier` — because the cbc schema declares
+ * UBLVersionIDType as an extension of it. Comparing names alone reports that as
+ * a defect, which it is not.
+ */
+function buildSuperclasses(): Map<string, string> {
+  const chain = new Map<string, string>();
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.ts')) {
+        const text = blankComments(readFileSync(full, 'utf8'));
+        for (const m of text.matchAll(/class\s+(\w+)\s+extends\s+(\w+)/g)) chain.set(m[1], m[2]);
+      }
+    }
+  };
+  walk(join(__dirname, '..', '..', 'src'));
+  return chain;
+}
+
+const superclassOf = buildSuperclasses();
+
+/** `declared`, or anything it extends, appears in `expected`. */
+function satisfies(declared: string, expected: string[]): boolean {
+  const seen = new Set<string>();
+  for (let name: string | undefined = declared; name && !seen.has(name); name = superclassOf.get(name)) {
+    if (expected.includes(name)) return true;
+    seen.add(name);
+  }
+  return false;
+}
+
 /** Every name the class implementing `type` is reachable by. */
 function namesFor(type: string): string[] | null {
   if (type.startsWith('udt:')) return [udtClass(type)];
@@ -152,7 +191,7 @@ readdirSync(CAC_DIR)
         continue;
       }
       compared += 1;
-      if (expected.includes(declared)) continue;
+      if (satisfies(declared, expected)) continue;
 
       // An aggregate wired to a datatype, or the reverse, builds the wrong kind
       // of object out of the value and loses it: Delivery.deliveryTerms names
@@ -172,6 +211,58 @@ readdirSync(CAC_DIR)
       });
     }
   });
+
+// The document map, which nothing has ever gated. It is not a params map and
+// Invoice is not a GenericAggregateComponent, so check:schema and check:types
+// both pass over it — and it decides the element name, sequence position,
+// cardinality and class of all 54 children of an invoice.
+const DOC_DIR = join(__dirname, '..', '..', 'src', 'documents');
+const docSource = blankComments(readFileSync(join(DOC_DIR, 'ChildrenMap.ts'), 'utf8'));
+const docType = schema.types.get('doc:InvoiceType');
+const docBounds = bodyBounds(docSource, /export const INVOICE_CHILDREN_MAP[^=]*=\s*\{/);
+if (!docType || !docBounds) {
+  problems.push({
+    file: 'ChildrenMap.ts',
+    key: '(whole map)',
+    element: 'doc:InvoiceType',
+    declared: '-',
+    expected: 'readable',
+    severity: 'drops content',
+  });
+} else {
+  const docBody = docSource.slice(docBounds.start, docBounds.end);
+  const positions = new Map(docType.children.map((c, i) => [c.name, { child: c, position: i + 1 }]));
+  const covered = new Set<string>();
+
+  for (const m of docBody.matchAll(/^\s{2}(\w+):\s*\{((?:[^{}]|\{[^{}]*\})*)\}/gm)) {
+    const [, key, entry] = m;
+    const element = /childName:\s*'([^']*)'/.exec(entry)?.[1];
+    const ref = /classRef:\s*(?:\(\)\s*=>\s*)?([A-Za-z_]\w*)/.exec(entry)?.[1];
+    const order = Number(/order:\s*(\d+)/.exec(entry)?.[1]);
+    const max = /max:\s*(\d+)/.exec(entry)?.[1];
+    if (!element || !ref) continue;
+
+    const found = positions.get(element);
+    if (!found) {
+      docProblems.push(`${key}: ${element} is not a child of doc:InvoiceType`);
+      continue;
+    }
+    covered.add(element);
+    if (order !== found.position) docProblems.push(`${key}: order ${order}, schema position ${found.position}`);
+    const repeats = found.child.maxOccurs === null;
+    if (repeats !== (max === undefined)) {
+      docProblems.push(
+        `${key}: max ${max ?? 'undefined'}, schema ${found.child.minOccurs}..${found.child.maxOccurs ?? '*'}`,
+      );
+    }
+    const names = namesFor(found.child.type);
+    if (names && !satisfies(ref, names))
+      docProblems.push(`${key}: classRef ${ref}, schema type ${found.child.type} (${names[0]})`);
+    docCompared += 1;
+  }
+
+  docType.children.filter((c) => !covered.has(c.name)).forEach((c) => docProblems.push(`(missing): ${c.name}`));
+}
 
 console.log(`compared ${compared} classRefs across ${readdirSync(CAC_DIR).length - 1} components`);
 if (uncomparable.length) {
@@ -198,4 +289,13 @@ if (problems.length) {
   process.exitCode = 1;
 } else {
   console.log('every classRef names the class implementing its schema type');
+}
+
+console.log(`\ncompared ${docCompared} children of doc:InvoiceType`);
+if (docProblems.length) {
+  docProblems.forEach((d) => console.log(`  ChildrenMap.ts: ${d}`));
+  console.log(`\n${docProblems.length} disagreement(s) between INVOICE_CHILDREN_MAP and the schema`);
+  process.exitCode = 1;
+} else {
+  console.log('the document map agrees with doc:InvoiceType on name, order, cardinality and class');
 }

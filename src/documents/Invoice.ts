@@ -6,8 +6,10 @@ import {
   AllowanceCharge,
   BillingReference,
   BillingReferenceParams,
+  BuyerCustomerParty,
   ContractDocumentReference,
   ContractDocumentReferenceParams,
+  CustomerPartyParams,
   Delivery,
   DeliveryTerms,
   DeliveryTermsParams,
@@ -24,24 +26,33 @@ import {
   OriginatorDocumentReference,
   OriginatorDocumentReferenceParams,
   PartyParams,
+  PayeeParty,
+  PaymentAlternativeExchangeRate,
   PaymentExchangeRate,
   PaymentMeans,
   PaymentMeansParams,
+  PaymentTerms,
+  PaymentTermsTypeParams,
   PaymentTypeParams,
   PeriodType,
   PeriodTypeParams,
   PrepaidPayment,
+  PricingExchangeRate,
   ProjectReference,
   ProjectReferenceParams,
   ReceiptDocumentReference,
   ReceiptDocumentReferenceParams,
+  SellerSupplierParty,
   Signature,
   SignatureParams,
   StatementDocumentReference,
   StatementDocumentReferenceParams,
+  SupplierPartyTypeParams,
+  TaxExchangeRate,
   TaxRepresentativeParty,
   TaxTotal,
   TaxTotalTypeParams,
+  WithholdingTaxTotal,
 } from '../cac';
 
 import { UBLExtensions } from '../ext';
@@ -608,8 +619,8 @@ export default class Invoice {
    * @param { any } input
    * @returns {Invoice}
    */
-  setPayeeParty(_input: any) {
-    throw new Error('not implemented');
+  setPayeeParty(value: PayeeParty | PartyParams): Invoice {
+    return this.assignChild('payeeParty', value);
   }
 
   /**
@@ -617,8 +628,8 @@ export default class Invoice {
    * @param { any } input
    * @returns {Invoice}
    */
-  setBuyerCustomerParty(_input: any) {
-    throw new Error('not implemented');
+  setBuyerCustomerParty(value: BuyerCustomerParty | CustomerPartyParams): Invoice {
+    return this.assignChild('buyerCustomerParty', value);
   }
 
   /**
@@ -626,8 +637,8 @@ export default class Invoice {
    * @param { any } input
    * @returns {Invoice}
    */
-  setSellerSupplierParty(_input: any) {
-    throw new Error('not implemented');
+  setSellerSupplierParty(value: SellerSupplierParty | SupplierPartyTypeParams): Invoice {
+    return this.assignChild('sellerSupplierParty', value);
   }
 
   /**
@@ -680,8 +691,8 @@ export default class Invoice {
    * 44 PrepaidPayment, PaymentTypeParams
    * @param value
    */
-  addPaymentTerm(_value: any) {
-    throw new Error('not implemented');
+  addPaymentTerm(value: PaymentTerms | PaymentTermsTypeParams): Invoice {
+    return this.assignChild('paymentTerms', value);
   }
 
   /**
@@ -714,16 +725,16 @@ export default class Invoice {
    * 47 A discount or charge that applies to a price component..
    * @param value
    */
-  setTaxExchangeRate(_value: any) {
-    throw new Error('not implemented');
+  setTaxExchangeRate(value: TaxExchangeRate | ExchangeRateParams): Invoice {
+    return this.assignChild('taxExchangeRate', value);
   }
 
   /**
    * 48 The exchange rate between the document currency and the pricing currency..
    * @param value
    */
-  setPricingExchangeRate(_value: any) {
-    throw new Error('not implemented');
+  setPricingExchangeRate(value: PricingExchangeRate | ExchangeRateParams): Invoice {
+    return this.assignChild('pricingExchangeRate', value);
   }
 
   /**
@@ -739,8 +750,8 @@ export default class Invoice {
    * 50 The exchange rate between the document currency and the payment alternative currency.
    * @param { any } value
    */
-  setPaymentAlternativeExchangeRate(_value: any) {
-    throw new Error('not implemented');
+  setPaymentAlternativeExchangeRate(value: PaymentAlternativeExchangeRate | ExchangeRateParams): Invoice {
+    return this.assignChild('paymentAlternativeExchangeRate', value);
   }
 
   /**
@@ -761,8 +772,8 @@ export default class Invoice {
    * 52 the total withholding tax
    * @param { any } value
    */
-  addWithholdingTaxTotal(_value: any) {
-    throw new Error('not implemented');
+  addWithholdingTaxTotal(value: WithholdingTaxTotal | TaxTotalTypeParams): Invoice {
+    return this.assignChild('withholdingTaxTotals', value);
   }
 
   /**
@@ -823,6 +834,31 @@ export default class Invoice {
    * @param value value
    * @param classRefs list of allowed classes
    */
+  /**
+   * Build and store a child using the class the document map names for it.
+   *
+   * The sixty setters above each restate their own class, which is why eight
+   * children could sit in INVOICE_CHILDREN_MAP with nothing but a `throw new
+   * Error('not implemented')` against them. Anything added from here on reads
+   * the class from the map, so a child that exists in the map can always be
+   * set, and `fromXml` assigns through the same path a caller would.
+   */
+  private assignChild(key: string, value: unknown, attributes?: Record<string, unknown>): Invoice {
+    const entry = INVOICE_CHILDREN_MAP[key];
+    if (!entry) throw new Error(`${key} is not a child of Invoice`);
+
+    const ClassRef = entry.classRef as new (content: unknown, attributes?: unknown) => unknown;
+    const built = value instanceof ClassRef ? value : new ClassRef(value, attributes);
+
+    if (entry.max === undefined) {
+      if (!this.children[key]) this.children[key] = [];
+      this.children[key].push(built);
+    } else {
+      this.children[key] = built;
+    }
+    return this;
+  }
+
   private validateInstanceOf(value: any, classRefs: any[]): void {
     // if(!value){
     //   this.children[attribute] = null
