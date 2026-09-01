@@ -10,6 +10,7 @@ import { join } from 'path';
  * revived in step 6.
  */
 
+import { aliasGroups, CAC_DIR as COMPONENTS_DIR } from './components';
 import { ALLOWED_PARAMS_OPEN, blankComments, bodyBounds } from './source';
 
 const CAC_DIR = join(__dirname, '..', '..', 'src', 'cac');
@@ -19,6 +20,8 @@ function slice(source: string, open: RegExp): string {
   const bounds = bodyBounds(source, open);
   return bounds ? source.slice(bounds.start, bounds.end) : '';
 }
+
+const aliases = aliasGroups(readdirSync(COMPONENTS_DIR).filter((f) => f.endsWith('.ts') && f !== 'index.ts'));
 
 let checked = 0;
 const problems: string[] = [];
@@ -62,6 +65,33 @@ readdirSync(CAC_DIR)
     [...typeKeys]
       .filter((key) => !mapKeySet.has(key))
       .forEach((key) => problems.push(`${file}: '${key}' is declared in AllowedParams but not in the params map`));
+
+    // The declared type has to name the class the value is wrapped in.
+    // check:classref holds the classRef to the schema; this holds the
+    // declaration to the classRef, and without it a field can be wrapped
+    // correctly and still be declared as something else. Two shapes, both live:
+    // DocumentReference.attachment was `string` against `classRef: Attachment`,
+    // so the only value the type accepted was built as an Attachment out of a
+    // string and threw "attribute 0 is not allowed"; and Address
+    // .countrySubentityCode said UdtText while its entry wrapped in UdtCode,
+    // which quietly offers the wrong attribute set.
+    //
+    // An export alias is the same class, so any name in its group will do —
+    // Delivery declares `maximumDeliveryUnit: MaximumDeliveryUnit` against
+    // `classRef: MinimumDeliveryUnit`, and both are DeliveryUnitType.
+    const refOf = new Map<string, string>();
+    for (const m of mapBody.matchAll(/^\s{2}(\w+):\s*\{((?:[^{}]|\{[^{}]*\})*)\}/gm)) {
+      const ref = /classRef:\s*(?:\(\)\s*=>\s*)?([A-Za-z_]\w*)/.exec(m[2])?.[1];
+      if (ref && ref !== 'null') refOf.set(m[1], ref);
+    }
+    for (const m of slice(source, ALLOWED_PARAMS_OPEN).matchAll(/^\s{2}(\w+)\??:\s*([^;\n]+);/gm)) {
+      const [, key, declared] = m;
+      const ref = refOf.get(key);
+      if (!ref) continue;
+      const acceptable = aliases.get(ref) ?? new Set([ref]);
+      if ([...acceptable].some((name) => new RegExp(`\\b${name}\\b`).test(declared))) continue;
+      problems.push(`${file}: '${key}' is declared \`${declared.trim()}\` but its value is wrapped in ${ref}`);
+    }
 
     // The constructor has to accept the type this file spent 130 lines
     // declaring. PaymentTerms took `content: string`, so the only call the
@@ -110,5 +140,5 @@ if (problems.length) {
   console.log(`\n${problems.length} problem(s) — a params map, its declared type and its constructor must agree`);
   process.exitCode = 1;
 } else {
-  console.log('params map and AllowedParams agree on every key, and arity agrees with max');
+  console.log('every key, arity, declared type and constructor agrees with the params map');
 }

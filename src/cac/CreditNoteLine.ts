@@ -143,7 +143,7 @@ type AllowedParams = {
   lineExtensionAmount?: string | UdtAmount;
   taxPointDate?: string | UdtDate;
   accountingCostCode?: string | UdtCode;
-  accountingCost?: string | UdtAmount;
+  accountingCost?: string | UdtText;
   paymentPurposeCode?: string | UdtCode;
   freeOfChargeIndicator?: string | UdtIndicator;
   invoicePeriods?: PeriodType[];

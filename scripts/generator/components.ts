@@ -153,3 +153,34 @@ export function schemaTypeFor(stem: string, schema: Schema): SchemaType | undefi
     schema.types.get(`doc:${stem}Type`)
   );
 }
+
+/**
+ * Names that refer to the same class, keyed by every one of them.
+ *
+ * `export { DeliveryUnitType as MaximumDeliveryUnit, DeliveryUnitType as
+ * MinimumDeliveryUnit }` makes three names for one class, and a params map
+ * entry may reasonably use any of them — Delivery declares
+ * `maximumDeliveryUnit: MaximumDeliveryUnit` against `classRef:
+ * MinimumDeliveryUnit`, which reads like a copy-paste slip and is in fact the
+ * same class twice. Anything comparing a declared type to a classRef has to
+ * know that before it starts reporting.
+ */
+export function aliasGroups(files: string[]): Map<string, Set<string>> {
+  const groups = new Map<string, Set<string>>();
+
+  files.forEach((file) => {
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
+    for (const block of source.matchAll(/export \{([^}]+)\}/g)) {
+      for (const part of block[1].split(',')) {
+        const [from, to] = part.split(/\s+as\s+/).map((x) => x.trim());
+        if (!from) continue;
+        const names = [from, to ?? from];
+        const merged = new Set<string>(names);
+        names.forEach((n) => groups.get(n)?.forEach((x) => merged.add(x)));
+        merged.forEach((n) => groups.set(n, merged));
+      }
+    }
+  });
+
+  return groups;
+}

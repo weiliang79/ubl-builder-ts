@@ -197,6 +197,32 @@ Passing a plain string is unaffected — that is how most values arrive, and it
 was always wrapped correctly on the way out. Only code constructing the wrapper
 itself needs to change, and only where the old wrapper was the wrong one.
 
+## Fifteen fields were declared as something other than what they build
+
+`check:classref` holds the `classRef` to the schema; `check:types` now holds the
+declaration to the `classRef`. Without the second, a field can be wrapped
+correctly and still be declared as something else.
+
+`DocumentReference.attachment` and `.validityPeriod` were declared `string`
+against entries that wrap in `Attachment` and `ValidityPeriod`, so the only
+value either type accepted was built as a component out of a string and threw
+`attribute 0 is not allowed`. Neither field was usable at all; both take their
+component now.
+
+Ten more on `DocumentReference` were declared `string` where the entry wraps in
+a datatype — `id`, `issueDate`, `versionID` and so on. Those worked, but the
+declaration refused the wrapper, so there was no way to set `schemeID` on an
+`id` or a `languageID` on a description. They are `string | Udt…` now, matching
+every other component.
+
+Three named the wrong class outright: `Address.countrySubentityCode` said
+`UdtText` against a `UdtCode` entry, `CreditNoteLine.accountingCost` said
+`UdtAmount` against `UdtText`, and `PartyTaxScheme.exemptionReason` was
+`string[]` where the entry wraps in `UdtText`.
+
+All of these widen or correct what a field accepts. Code passing plain strings
+is unaffected.
+
 ## `PaymentTerms` takes its params, not a string
 
 `constructor(content: string)` meant the only call its signature allowed threw

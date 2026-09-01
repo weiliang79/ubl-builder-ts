@@ -13,12 +13,17 @@ import { blankComments, bodyBounds } from './source';
  * the classRef, which decides what a raw string gets wrapped in, was checked by
  * nobody.
  *
- * It matters most when an aggregate is wired to a datatype. `classRef` is only
- * consulted for values that are not already component instances, so a mismatch
- * between two datatypes (UdtText where UBL says NameType) is a wrong
- * declaration with identical output, while an aggregate wired to UdtDate builds
- * a date out of an object and emits an empty element with the content silently
- * gone.
+ * Both shapes it goes wrong in are real, and the second is not cosmetic.
+ *
+ * An aggregate wired to a datatype builds the wrong kind of object out of the
+ * value and loses it: Delivery.deliveryTerms named UdtDate for
+ * cac:DeliveryTerms and emitted <cac:DeliveryTerms></…> with the children gone.
+ *
+ * Two datatypes confused for each other keep the text and change the legal
+ * attribute set. multiplierFactorNumeric was UdtAmount against a NumericType,
+ * so code with no casts in it could attach a currencyID and produce an invoice
+ * xmllint rejects — "attribute 'currencyID' is not allowed". This was filed as
+ * cosmetic until someone ran the XSD over it.
  */
 
 const schema = loadSchema();
@@ -27,7 +32,7 @@ const learned = learnByType(
   schema,
 );
 
-type Severity = 'drops content' | 'forbidden attribute' | 'declaration';
+type Severity = 'drops content' | 'forbidden attribute';
 
 interface Problem {
   file: string;
@@ -39,6 +44,7 @@ interface Problem {
 }
 
 const problems: Problem[] = [];
+const uncomparable: string[] = [];
 let compared = 0;
 
 /**
@@ -69,10 +75,21 @@ function buildImplementers(): Map<string, Set<string>> {
       const fallback = schemaTypeFor(file.replace(/\.ts$/, ''), schema);
       const typeOfClass = new Map<string, string>();
 
-      for (const m of source.matchAll(
-        /class\s+(\w+)\s+extends\s+GenericAggregateComponent[\s\S]*?super\(\s*content\s*,\s*\w+\s*,\s*'([^']*)'/g,
-      )) {
-        const [, cls, serves] = m;
+      // Walked class by class rather than matched with one lazy `[\s\S]*?`
+      // spanning both. A class whose super() does not match the shape below
+      // would let the lazy version run on and pair it with the *next* class's
+      // element. Every class in src/cac has its own today, so nothing is
+      // mispaired — but an unbounded lazy match is how the arity gate came to
+      // read the next entry's `max` and how a field rewrite came to delete a
+      // params map, and neither of those was firing until it was.
+      const heads = [...source.matchAll(/class\s+(\w+)\s+extends\s+GenericAggregateComponent/g)];
+      for (let i = 0; i < heads.length; i += 1) {
+        const upTo = i + 1 < heads.length ? heads[i + 1].index! : source.length;
+        const inClass = source.slice(heads[i].index!, upTo);
+        const sup = /super\(\s*content\s*,\s*\w+\s*,\s*'([^']*)'/.exec(inClass);
+        if (!sup) continue;
+        const cls = heads[i][1];
+        const serves = sup[1];
         // The argument is an element name in most files and a type name in a
         // few — `super(content, ParamsMap, 'cac:AddressType')`. Try both.
         const type = schema.elements.get(serves) ?? (schema.types.has(serves) ? serves : undefined);
@@ -126,7 +143,14 @@ readdirSync(CAC_DIR)
       if (!child) continue; // check:schema owns elements that are not in the type
 
       const expected = namesFor(child.type);
-      if (!expected) continue; // no class implements it yet; generate:complete reports those
+      if (!expected) {
+        // No component class exists for this type yet — BillingReferenceLine
+        // carries `classRef: null` as a deliberate placeholder for exactly
+        // that. Counted rather than passed over in silence, so the compared
+        // total reconciles against the 519 entries in src/cac.
+        uncomparable.push(`${file.replace(/\.ts$/, '')}.${key} (${child.type} has no class)`);
+        continue;
+      }
       compared += 1;
       if (expected.includes(declared)) continue;
 
@@ -150,6 +174,9 @@ readdirSync(CAC_DIR)
   });
 
 console.log(`compared ${compared} classRefs across ${readdirSync(CAC_DIR).length - 1} components`);
+if (uncomparable.length) {
+  console.log(`  ${uncomparable.length} not compared: ${uncomparable.join(', ')}`);
+}
 if (problems.length) {
   const drops = problems.filter((p) => p.severity === 'drops content');
   const wrappers = problems.filter((p) => p.severity === 'forbidden attribute');

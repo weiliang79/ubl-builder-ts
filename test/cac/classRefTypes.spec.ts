@@ -1,9 +1,12 @@
-import { PostalAddress } from '../../src/cac';
+import { DespatchDocumentReference, PostalAddress } from '../../src/cac';
 import { AllowanceCharge } from '../../src/cac/AllowanceCharge';
+import { Attachment } from '../../src/cac/Attachment';
 import { Delivery } from '../../src/cac/Delivery';
 import { DeliveryTerms } from '../../src/cac/DeliveryTerms';
+import { ExternalReference } from '../../src/cac/ExternalReference';
 import { PaymentTerms } from '../../src/cac/PaymentTerms';
-import { UdtName, UdtPercent } from '../../src/datatypes/udt';
+import { ValidityPeriod } from '../../src/cac/Period';
+import { UdtIdentifier, UdtName, UdtPercent } from '../../src/datatypes/udt';
 
 /**
  * A params-map entry's `classRef` decides what a raw value gets wrapped in, and
@@ -45,6 +48,26 @@ describe('classRef agrees with the schema', () => {
 
     expect(address.getAsXml(false, true, 'cac:PostalAddress')).toBe(
       '<cac:PostalAddress><cbc:StreetName languageID="en">Main Street</cbc:StreetName></cac:PostalAddress>',
+    );
+  });
+
+  it('accepts the aggregate its entry actually builds', () => {
+    // cac:Attachment and cac:ValidityPeriod were declared `string` against
+    // entries that wrap in Attachment and ValidityPeriod, so the only value
+    // either type accepted was built as a component out of a string and threw
+    // "attribute 0 is not allowed". Neither was usable at all.
+    const ref = new DespatchDocumentReference({
+      id: new UdtIdentifier('D1', { schemeID: 'DN' }),
+      attachment: new Attachment({ externalReference: new ExternalReference({ URI: 'https://example.test/a.pdf' }) }),
+      validityPeriod: new ValidityPeriod({ startDate: '2026-01-01' }),
+    });
+
+    expect(ref.getAsXml(false, true, 'cac:DespatchDocumentReference')).toBe(
+      '<cac:DespatchDocumentReference>' +
+        '<cbc:ID schemeID="DN">D1</cbc:ID>' +
+        '<cac:Attachment><cac:ExternalReference><cbc:URI>https://example.test/a.pdf</cbc:URI></cac:ExternalReference></cac:Attachment>' +
+        '<cac:ValidityPeriod><cbc:StartDate>2026-01-01</cbc:StartDate></cac:ValidityPeriod>' +
+        '</cac:DespatchDocumentReference>',
     );
   });
 

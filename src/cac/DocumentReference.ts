@@ -62,21 +62,21 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
  * @property {IssuerParty} [issuerParty] - The party who issued the referenced document.
  */
 interface AllowedParams {
-  id: string;
-  copyIndicator?: string;
+  id: string | UdtIdentifier;
+  copyIndicator?: string | UdtIndicator;
   uuid?: UdtIdentifier | string;
-  issueDate?: string;
-  issueTime?: string;
+  issueDate?: string | UdtDate;
+  issueTime?: string | UdtTime;
   documentTypeCode?: UdtCode | string;
-  documentType?: string;
-  xPath?: string[];
-  languageID?: string;
-  localeCode?: string;
-  versionID?: string;
-  documentStatusCode?: string;
+  documentType?: string | UdtText;
+  xPath?: (string | UdtText)[];
+  languageID?: string | UdtIdentifier;
+  localeCode?: string | UdtCode;
+  versionID?: string | UdtIdentifier;
+  documentStatusCode?: string | UdtCode;
   documentDescription?: (string | UdtText)[];
-  attachment?: string;
-  validityPeriod?: string;
+  attachment?: Attachment;
+  validityPeriod?: ValidityPeriod;
   issuerParty?: IssuerParty;
 }
 
