@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild, SchemaType } from './schema';
-import { blankComments } from './source';
+import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
 
 /**
  * Adds the elements the fork never transcribed.
@@ -179,7 +179,7 @@ function main(): void {
     // the same character in `source`.
     let scan = blankComments(source);
     const mapOpen = /const ParamsMap[^=]*=\s*\{/.exec(scan);
-    const paramsOpen = /type AllowedParams\s*=\s*\{/.exec(scan);
+    const paramsOpen = ALLOWED_PARAMS_OPEN.exec(scan);
     if (!mapOpen || !paramsOpen) return;
 
     // Comment-stripped, for the same reason the fallback loop above is: a
@@ -271,7 +271,7 @@ function main(): void {
     )}`;
 
     scan = blankComments(source);
-    const reopened = /type AllowedParams\s*=\s*\{/.exec(scan)!;
+    const reopened = ALLOWED_PARAMS_OPEN.exec(scan)!;
     source = `${source.slice(0, reopened.index! + reopened[0].length)}\n${paramFields}${source.slice(
       reopened.index! + reopened[0].length,
     )}`;

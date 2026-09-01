@@ -69,12 +69,12 @@ interface AllowedParams {
   issueTime?: string;
   documentTypeCode?: UdtCode | string;
   documentType?: string;
-  xPath?: string;
+  xPath?: string[];
   languageID?: string;
   localeCode?: string;
   versionID?: string;
   documentStatusCode?: string;
-  documentDescription?: string;
+  documentDescription?: string[];
   attachment?: string;
   validityPeriod?: string;
   issuerParty?: string;

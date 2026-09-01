@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild } from './schema';
-import { blankComments } from './source';
+import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
 
 /**
  * Corrects the params maps in place from the OASIS schemas.
@@ -124,7 +124,7 @@ function alignOptionality(
   source: string,
   want: Map<string, { optional: boolean; repeats: boolean }>,
 ): { source: string; changes: string[] } {
-  const bounds = bodyBounds(source, /type AllowedParams\s*=\s*\{/);
+  const bounds = bodyBounds(source, ALLOWED_PARAMS_OPEN);
   if (!bounds) return { source, changes: [] };
 
   const changes: string[] = [];

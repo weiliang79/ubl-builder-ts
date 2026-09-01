@@ -10,9 +10,10 @@ import {
 
 /**
  * Six UBL types contain themselves: a Party has an AgentParty, a Location has
- * SubsidiaryLocations, an InvoiceLine has SubInvoiceLines, and so on. Their params maps must reference the class
- * the file is still in the middle of declaring, which only works through a lazy
- * `classRef: () => X` resolved on first use.
+ * SubsidiaryLocations, an InvoiceLine has SubInvoiceLines, and so on. Their
+ * params maps must reference the class the file is still in the middle of
+ * declaring, which only works through a lazy `classRef: () => X` resolved on
+ * first use.
  *
  * Nothing else can catch a mistake here. TypeScript is satisfied either way —
  * the binding exists at type level regardless — and the schema and params-map
@@ -21,10 +22,11 @@ import {
  * actually sets the child.
  *
  * These construct with no casts, which is itself the assertion: until the
- * AllowedParams optionality was aligned with the schema, CreditNoteLine
- * required 23 fields and three of these four children could not be set from
- * typed code at all. `id` below is supplied because cbc:ID really is
- * minOccurs="1" on a credit note line.
+ * AllowedParams optionality was aligned with the schema, five of the six host
+ * types demanded fields UBL marks optional — CreditNoteLine wanted 23 and
+ * DebitNoteLine 17 — so most of these children could not be set from typed
+ * code at all. The `id` and `lineExtensionAmount` supplied below are the ones
+ * UBL really does mark minOccurs="1".
  */
 describe('self-referential children', () => {
   it('nests a Party inside a Party through cac:AgentParty', () => {
@@ -78,9 +80,10 @@ describe('self-referential children', () => {
     // output is the same for every possible `order`, so the assertion would
     // hold even if the value regressed.
     //
-    // This matters more than usual here: all four new entries are written as
-    // the *first* key of their params-map object literal, so landing in the
-    // right position depends entirely on toNode() sorting by `order`.
+    // This matters more than usual here: the generator prepends, so all six
+    // new entries sit at the top of their params-map object literal regardless
+    // of sequence position, and landing in the right place depends entirely on
+    // toNode() sorting by `order`.
     // cbc:MarkCareIndicator is order 1 and cac:AgentParty is 16, so declaration
     // order and sequence order disagree.
     const party = new Party({ markCareIndicator: 'true', agentParty: new Party({}) });

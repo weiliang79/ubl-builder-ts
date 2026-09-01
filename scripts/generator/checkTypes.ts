@@ -10,7 +10,7 @@ import { join } from 'path';
  * revived in step 6.
  */
 
-import { blankComments } from './source';
+import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
 
 const CAC_DIR = join(__dirname, '..', '..', 'src', 'cac');
 
@@ -35,8 +35,17 @@ readdirSync(CAC_DIR)
     // that disagree with the map; it must not be fooled by the same trick.
     const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
     const map = /const ParamsMap[^=]*=\s*\{/.exec(source);
-    const params = /type AllowedParams\s*=\s*\{/.exec(source);
-    if (!map || !params) return;
+    const params = ALLOWED_PARAMS_OPEN.exec(source);
+    if (!map) return;
+    // Loud, not silent. Three files wrote `interface AllowedParams {` where the
+    // rest write `type AllowedParams = {`, and every scanner here quietly
+    // stepped over them for as long as they have existed. A component with a
+    // params map and no readable declaration beside it is a gap in the gate,
+    // and the gate should say so rather than count itself lucky.
+    if (!params) {
+      problems.push(`${file}: has a ParamsMap but no AllowedParams this gate can read`);
+      return;
+    }
 
     checked += 1;
     const mapBody = body(source, map.index + map[0].length);

@@ -73,8 +73,8 @@ and the sixth is annotated as needing a component type that does not exist yet.
 
 The document model is unchanged and XML output is byte-for-byte identical to
 0.1.1. What changes is the _types_: `AllowedParams` was transcribed by hand and
-had drifted from the schema in 231 places, so the declarations now say what UBL
-says. Most of that is a relaxation and needs no action. Three groups do.
+had drifted from the schema in 232 places, so the declarations now say what UBL
+says. Most of that is a relaxation and needs no action. Four groups do.
 
 ## Four fields became required
 
@@ -107,22 +107,45 @@ They were unusable; now they work.
 | `CreditNoteLine` | `originatorParty` | `Party[]`    | `Party`    |
 | `Party`          | `language`        | `Language[]` | `Language` |
 
-## Thirty-two fields became arrays
+## Thirty-three fields became arrays
 
 These are `maxOccurs="unbounded"` in UBL but were typed as single values, so
-setting more than one needed a cast. Sixty-one sibling fields already followed
+setting more than one needed a cast. Fifty-seven sibling fields already followed
 the array convention; these were the outliers. Wrap the value:
 
 ```ts
 // before
-new Despatch({ notifyParty: party });
+new InvoiceLine({ id: '1', lineExtensionAmount: '100.00', item, delivery });
 
 // after
-new Despatch({ notifyParty: [party] });
+new InvoiceLine({ id: '1', lineExtensionAmount: '100.00', item, delivery: [delivery] });
 ```
 
 The runtime always accepted both, so this is a type-level change only — no
 output differs.
+
+## One field was misspelled
+
+`PostalAddress` declared `AdditionalStreetName` while its params map keyed on
+`additionalStreetName`, so the only spelling TypeScript accepted threw
+`attribute AdditionalStreetName is not allowed` from the constructor, and the
+spelling that worked did not compile. `cbc:AdditionalStreetName` — address line
+2, on every invoice with a PO box — was unreachable either way.
+
+```ts
+// before — compiled, threw at construction
+new PostalAddress({ AdditionalStreetName: 'Po Box 351' });
+
+// after
+new PostalAddress({ additionalStreetName: 'Po Box 351' });
+```
+
+This survived because three of the 52 components write
+`interface AllowedParams {` where the rest write `type AllowedParams = {`, and
+every generator scan matched only the second form. `DocumentReference`,
+`ItemPriceExtension` and `PostalAddress` were silently exempt from all of them.
+The scans now accept both, and `check:types` fails on a component it cannot
+read rather than skipping it — which is how this was found.
 
 ## Not a breaking change
 

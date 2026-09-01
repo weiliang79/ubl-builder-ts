@@ -67,7 +67,7 @@ interface AllowedParams {
   /* Seller address line 1. The main address line in an address. Example value: Main Street 1 */
   streetName?: string | UdtText;
   /* Seller address line 2. An additional address line in an address that can be used to give further details supplementing the main line. Example value: Po Box 351 */
-  AdditionalStreetName?: string | UdtText;
+  additionalStreetName?: string | UdtText;
   /* 	Seller city. The common name of the city, town or village, where the Seller address is located. Example value: London */
   cityName?: string | UdtText;
   /* Seller post code. The identifier for an addressable group of properties according to the relevant postal service. Example value: W1G 8LZ */
