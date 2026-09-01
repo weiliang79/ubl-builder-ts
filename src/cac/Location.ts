@@ -19,6 +19,12 @@ cac:LocationCoordinate [0..*]    The geographical coordinates of this location.
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  subsidiaryLocations: {
+    order: 11,
+    attributeName: 'cac:SubsidiaryLocation',
+    max: undefined,
+    classRef: () => LocationType,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   description: { order: 2, attributeName: 'cbc:Description', max: undefined, classRef: UdtText },
   conditions: { order: 3, attributeName: 'cbc:Conditions', max: undefined, classRef: UdtText },
@@ -44,6 +50,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A location subsidiary to this location. */
+  subsidiaryLocations?: LocationType[];
   id: string | UdtIdentifier;
   description: string | UdtText;
   conditions: string | UdtText;

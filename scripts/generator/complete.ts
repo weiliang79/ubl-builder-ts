@@ -38,8 +38,11 @@ function udtClass(type: string): string {
  * an element no existing map happens to use — cac:CountryType via
  * cac:OriginCountry, say — and keying by element would miss those.
  */
-function learnByType(files: string[], schema: Schema): Map<string, { classRef: string; module: string }> {
-  const learned = new Map<string, { classRef: string; module: string }>();
+function learnByType(
+  files: string[],
+  schema: Schema,
+): Map<string, { classRef: string; declared: string; module: string }> {
+  const learned = new Map<string, { classRef: string; declared: string; module: string }>();
 
   files.forEach((file) => {
     const stem = basename(file, '.ts');
@@ -66,7 +69,11 @@ function learnByType(files: string[], schema: Schema): Map<string, { classRef: s
     const names = aliases.get(primary) ?? [primary];
     // prefer the alias matching the file name, so imports read predictably
     const classRef = names.find((n) => n === stem) ?? names[0];
-    learned.set(key, { classRef, module: file });
+    // `declared` is the name the class statement actually binds. It differs
+    // from classRef whenever a file exports under an alias — Location.ts
+    // declares LocationType and exports it as AlternativeDeliveryLocation —
+    // and a same-file reference must use the binding, not the export name.
+    learned.set(key, { classRef, declared: primary, module: file });
   });
 
   // fall back to whatever existing maps already do
@@ -74,7 +81,10 @@ function learnByType(files: string[], schema: Schema): Map<string, { classRef: s
     const source = readFileSync(join(CAC_DIR, file), 'utf8');
     for (const m of source.matchAll(/attributeName:\s*'(cac:[^']+)',[^}]*?classRef:\s*(\w+)/g)) {
       const declared = schema.elements.get(m[1]);
-      if (declared && !learned.has(declared)) learned.set(declared, { classRef: m[2], module: file });
+      // Here the classRef is read out of working code, so it is already a
+      // local binding in that file — declared and classRef coincide.
+      if (declared && !learned.has(declared))
+        learned.set(declared, { classRef: m[2], declared: m[2], module: file });
     }
   });
 
@@ -114,6 +124,7 @@ interface Addition {
   classRef: string;
   from: string | null; // module to import from, null if already imported
   tsType: string;
+  lazy: boolean; // emit `() => X` because X is declared below the params map
 }
 
 function main(): void {
@@ -125,7 +136,6 @@ function main(): void {
   let added = 0;
   let changedFiles = 0;
   const unresolved = new Map<string, number>();
-  const selfReferential = new Map<string, number>();
 
   files.forEach((file) => {
     const path = join(CAC_DIR, file);
@@ -145,13 +155,14 @@ function main(): void {
     type.children.forEach((child) => {
       if (present.has(child.name)) return;
 
-      // A self-referential child would put the class above its own declaration
-      // (cac:AgentParty inside PartyType). That needs a lazy classRef, which is
-      // a change to the params map contract rather than an addition to it.
-      if (child.type === schema.elements.get(`cac:${basename(file, '.ts')}`) || child.type === `cac:${type.name}`) {
-        selfReferential.set(child.name, (selfReferential.get(child.name) ?? 0) + 1);
-        return;
-      }
+      // A self-referential child names the very class the params map sits above
+      // — cac:AgentParty inside PartyType. Referring to it eagerly would read
+      // the binding before the class statement initialises it, so these are
+      // emitted as `() => X` and resolved on first use by resolveClassRef.
+      // The mechanism already exists and is used for cross-file cycles; this
+      // only stops the generator declining to reach for it.
+      const isSelfReferential =
+        child.type === schema.elements.get(`cac:${basename(file, '.ts')}`) || child.type === `cac:${type.name}`;
 
       const repeats = child.maxOccurs === null;
       let classRef: string;
@@ -168,7 +179,10 @@ function main(): void {
           unresolved.set(child.type, (unresolved.get(child.type) ?? 0) + 1);
           return;
         }
-        classRef = known.classRef;
+        // Cross-file references import the exported name; a self-reference is
+        // resolved in this module's own scope, where only the declared name
+        // exists. Using the export alias there is a ReferenceError at first use.
+        classRef = isSelfReferential ? known.declared : known.classRef;
         tsType = classRef;
         if (!existingImports.has(classRef)) from = `./${basename(known.module, '.ts')}`;
         if (from === `./${basename(file, '.ts')}`) from = null; // defined in this file
@@ -179,7 +193,7 @@ function main(): void {
       if (usedKeys.has(key)) return; // a differently-named entry already covers it
       usedKeys.add(key);
 
-      additions.push({ key, child, classRef, from, tsType: repeats ? `${tsType}[]` : tsType });
+      additions.push({ key, child, classRef, from, tsType: repeats ? `${tsType}[]` : tsType, lazy: isSelfReferential });
     });
 
     if (additions.length === 0) return;
@@ -190,7 +204,7 @@ function main(): void {
         (a) =>
           `  ${a.key}: { order: ${type.children.indexOf(a.child) + 1}, attributeName: '${a.child.name}', ` +
           `max: ${a.child.maxOccurs === null ? 'undefined' : a.child.maxOccurs}, ` +
-          `classRef: ${a.classRef} },`,
+          `classRef: ${a.lazy ? `() => ${a.classRef}` : a.classRef} },`,
       )
       .join('\n');
 
@@ -232,12 +246,6 @@ function main(): void {
 
   console.log(`\n${'='.repeat(64)}`);
   console.log(`${write ? 'added' : 'would add'} ${added} elements across ${changedFiles} files`);
-  if (selfReferential.size) {
-    const total = [...selfReferential.values()].reduce((a, b) => a + b, 0);
-    console.log(
-      `\nskipped ${total} self-referential children (need a lazy classRef): ${[...selfReferential.keys()].join(', ')}`,
-    );
-  }
   if (unresolved.size) {
     const total = [...unresolved.values()].reduce((a, b) => a + b, 0);
     console.log(`\nskipped ${total} children needing ${unresolved.size} component types that do not exist yet:`);

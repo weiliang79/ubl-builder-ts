@@ -32,6 +32,7 @@ import { PostalAddress } from './PostalAddress';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  agentParty: { order: 16, attributeName: 'cac:AgentParty', max: 1, classRef: () => Party },
   markCareIndicator: { order: 1, attributeName: 'cbc:MarkCareIndicator', max: 1, classRef: UdtIndicator },
   markAttentionIndicator: {
     order: 2,
@@ -85,6 +86,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A party who acts as an agent for this party. */
+  agentParty?: Party;
   /**  An indicator that this party is "care of" (c/o) (true) or not (false) */
   markCareIndicator?: UdtIndicator | string;
   /** An indicator that this party is "for the attention of" (FAO) (true) or not (false) */

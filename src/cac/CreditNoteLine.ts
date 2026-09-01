@@ -48,6 +48,12 @@ import { TaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  subCreditNoteLines: {
+    order: 27,
+    attributeName: 'cac:SubCreditNoteLine',
+    max: undefined,
+    classRef: () => CreditNoteLineType,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   uuid: { order: 2, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
   notes: { order: 3, attributeName: 'cbc:Note', max: undefined, classRef: UdtText },
@@ -118,6 +124,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A class defining one or more Credit Note Lines detailing the credit note line. */
+  subCreditNoteLines?: CreditNoteLineType[];
   /** The price extension, calculated by multiplying the price per unit by the quantity of items on this credit note line. */
   itemPriceExtension?: ItemPriceExtension;
   id: string | UdtIdentifier;

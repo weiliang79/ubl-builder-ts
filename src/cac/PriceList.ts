@@ -11,6 +11,7 @@ import { ValidityPeriod } from './Period';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  previousPriceList: { order: 4, attributeName: 'cac:PreviousPriceList', max: 1, classRef: () => PriceList },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   statusCode: { order: 2, attributeName: 'cbc:StatusCode', max: 1, classRef: UdtCode },
   validityPeriods: {
@@ -25,6 +26,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** The previous price list. */
+  previousPriceList?: PriceList;
   id: string | UdtIdentifier;
   statusCode: string | UdtCode;
   validityPeriods: ValidityPeriod;
