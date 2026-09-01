@@ -51,8 +51,19 @@ describe('self-referential children', () => {
   });
 
   it('places the nested element where the schema sequence puts it', () => {
-    const party = new Party({ agentParty: new Party({}) });
-    // cac:AgentParty is order 16 in PartyType, after cac:PartyLegalEntity (14).
-    expect(party.getAsXml(false, true, 'cac:Party')).toBe('<cac:Party><cac:AgentParty/></cac:Party>');
+    // Needs a second child to mean anything. With cac:AgentParty alone the
+    // output is the same for every possible `order`, so the assertion would
+    // hold even if the value regressed.
+    //
+    // This matters more than usual here: all four new entries are written as
+    // the *first* key of their params-map object literal, so landing in the
+    // right position depends entirely on toNode() sorting by `order`.
+    // cbc:MarkCareIndicator is order 1 and cac:AgentParty is 16, so declaration
+    // order and sequence order disagree.
+    const party = new Party({ markCareIndicator: 'true', agentParty: new Party({}) });
+
+    expect(party.getAsXml(false, true, 'cac:Party')).toBe(
+      '<cac:Party><cbc:MarkCareIndicator>true</cbc:MarkCareIndicator><cac:AgentParty/></cac:Party>',
+    );
   });
 });

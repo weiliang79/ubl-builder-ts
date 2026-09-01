@@ -76,19 +76,45 @@ function learnByType(
     learned.set(key, { classRef, declared: primary, module: file });
   });
 
-  // fall back to whatever existing maps already do
+  // Fall back to whatever existing maps already do — but only to *live* ones.
+  //
+  // Scanning the raw source also matched commented-out entries, which are
+  // plentiful here and frequently wrong: it learned cac:BillingReferenceLine
+  // and cac:DiscrepancyResponse as `null`, cac:SubDebitNoteLine as `undefined`,
+  // and cac:OtherCommunication as UdtIdentifier. Nothing has emitted from those
+  // yet only because `present` scrapes commented-out attributeNames too and
+  // masks them; the first child that slips past would emit `classRef: null` and
+  // `import { null } from './BillingReference'`.
+  //
+  // So comments are stripped first, and a classRef is only believed if it looks
+  // like a class and the module it came from actually exports it.
   files.forEach((file) => {
-    const source = readFileSync(join(CAC_DIR, file), 'utf8');
-    for (const m of source.matchAll(/attributeName:\s*'(cac:[^']+)',[^}]*?classRef:\s*(\w+)/g)) {
-      const declared = schema.elements.get(m[1]);
-      // Here the classRef is read out of working code, so it is already a
-      // local binding in that file — declared and classRef coincide.
-      if (declared && !learned.has(declared))
-        learned.set(declared, { classRef: m[2], declared: m[2], module: file });
+    const raw = readFileSync(join(CAC_DIR, file), 'utf8');
+    const source = raw
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !/^\s*\/\//.test(line))
+      .join('\n');
+    for (const m of source.matchAll(/attributeName:\s*'(cac:[^']+)',[^}]*?classRef:\s*(?:\(\) =>\s*)?(\w+)/g)) {
+      const type = schema.elements.get(m[1]);
+      const ref = m[2];
+      if (!type || learned.has(type)) continue;
+      // `classRef: null` is a deliberate placeholder in a few maps for types
+      // with no component class yet; it is not a name to learn.
+      if (!/^[A-Z]\w*$/.test(ref)) continue;
+      // The module recorded here becomes an import path later, so the name has
+      // to actually be a binding in this file — declared here or imported.
+      if (!declaredIn(source).has(ref) && !importsOf(source).has(ref)) continue;
+      learned.set(type, { classRef: ref, declared: ref, module: file });
     }
   });
 
   return learned;
+}
+
+/** Class names this file declares itself. */
+function declaredIn(source: string): Set<string> {
+  return new Set([...source.matchAll(/^(?:export )?(?:default )?(?:abstract )?class (\w+)/gm)].map((m) => m[1]));
 }
 
 /** Where a symbol is imported from, if the file already imports it. */
