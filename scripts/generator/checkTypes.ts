@@ -21,7 +21,7 @@ import { join } from 'path';
  * work.
  */
 
-import { aliasGroups, CAC_DIR, declaredIn } from './components';
+import { aliasGroups, CAC_DIR } from './components';
 import { ALLOWED_PARAMS_OPEN, blankComments, bodyBounds } from './source';
 
 /** The body `open` introduces, as text. `source` is already comment-blanked. */
@@ -159,15 +159,27 @@ readdirSync(CAC_DIR)
   .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
   .forEach((file) => {
     const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
-    const classes = declaredIn(source);
+    const published = new Set<string>();
+
+    // All 52 components publish through a trailing `export { … }` today, but
+    // `export class Foo` is the same thing and would have been invisible here.
+    for (const m of source.matchAll(/^export (?:default )?(?:abstract )?class (\w+)/gm)) published.add(m[1]);
+    // Params types as well as classes: a module that exports a name meant it to
+    // be used, and the barrel is the only place it can be used from.
+    // IssuerPartyParams was the one the class-only version missed.
     for (const block of source.matchAll(/export \{([^}]+)\}/g)) {
       for (const part of block[1].split(',')) {
         const [from, to] = part.split(/\s+as\s+/).map((x) => x.trim());
-        const name = to ?? from;
-        if (!from || !classes.has(from) || exportedNames.has(name)) continue;
-        problems.push(`index.ts: '${name}' is a component class no consumer can import — add it to the cac barrel`);
+        if (from) published.add(to ?? from);
       }
     }
+
+    published.forEach((name) => {
+      if (exportedNames.has(name)) return;
+      problems.push(
+        `index.ts: '${name}' is exported by ${file} but not by the barrel, so nothing outside can import it`,
+      );
+    });
   });
 
 console.log(`checked ${checked} components`);

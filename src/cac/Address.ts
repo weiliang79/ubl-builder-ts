@@ -152,7 +152,7 @@ Element cac:ReturnAddress
 */
 export {
   Address,
-  Address as AddressParams,
+  AllowedParams as AddressParams,
   Address as DeliveryAddress,
   Address as DespatchAddress,
   Address as JurisdictionRegionAddress,

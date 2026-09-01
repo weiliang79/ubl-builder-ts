@@ -247,6 +247,15 @@ import { Attachment, ExternalReference } from '@weiliang79/ubl-builder/cac';
 where every other component uses `…Params`. It is `ExternalReferenceParams`
 now. Nothing could have imported the old name.
 
+`AddressParams` named the `Address` class rather than its params type, so
+`const a: AddressParams = { streetName: '…' }` did not compile and `Address`
+had no usable params type at all. It names the type now, as every other
+`…Params` export does. Code using `AddressParams` as a value — `new
+AddressParams(…)` — should use `Address`.
+
+`IssuerPartyParams` existed on the module and was missing from the barrel;
+it is exported now.
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them
