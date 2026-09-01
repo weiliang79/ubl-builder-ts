@@ -80,12 +80,12 @@ type AllowedParams = {
   guaranteedDespatchDate?: string | UdtDate;
   guaranteedDespatchTime?: string | UdtTime;
   releaseID?: string | UdtIdentifier;
-  instructions?: string | UdtText;
+  instructions?: (string | UdtText)[];
   despatchAddress?: DespatchAddress;
   despatchLocation?: DespatchLocation;
   despatchParty?: DespatchParty;
   carrierParty?: CarrierParty;
-  NotifyParties?: NotifyParty;
+  NotifyParties?: NotifyParty[];
   contact?: Contact;
   estimatedDespatchPeriod?: EstimatedDespatchPeriod;
   requestedDespatchPeriod?: EstimatedDespatchPeriod;

@@ -1,6 +1,7 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtCode, UdtIdentifier, UdtText } from '../datatypes/udt';
 import { UdtAmount } from '../datatypes/udt/UdtAmount';
+import { AllowanceCharge } from './AllowanceCharge';
 import { DeliveryLocation } from './Location';
 /*
 
@@ -15,6 +16,7 @@ import { DeliveryLocation } from './Location';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  allowanceCharge: { order: 7, attributeName: 'cac:AllowanceCharge', max: 1, classRef: AllowanceCharge },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   specialTerms: { order: 2, attributeName: 'cbc:SpecialTerms', max: undefined, classRef: UdtText },
   lossRiskResponsibilityCode: {
@@ -31,19 +33,19 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     max: 1,
     classRef: () => DeliveryLocation,
   },
-  // allowanceCharge: { order: 7,  attributeName: 'cac:AllowanceCharge', max: 1, classRef: AllowanceCharge },
 
   // ##################################  TODO CAC MISSING ################################################
 };
 
 type AllowedParams = {
+  /** An allowance or charge covered by these delivery terms. */
+  allowanceCharge?: AllowanceCharge;
   id?: string | UdtIdentifier;
   specialTerms?: string[] | UdtText[];
   lossRiskResponsibilityCode?: string | UdtCode;
   lossRisks?: string[] | UdtText[];
   amount?: string | UdtAmount;
   deliveryLocation?: DeliveryLocation;
-  // allowanceCharge: ""
 };
 
 /**

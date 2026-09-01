@@ -108,20 +108,43 @@ function bodyBounds(source: string, open: RegExp): { start: number; end: number 
  *
  * D8 says cac/ stays exactly as permissive as UBL. That cuts both ways.
  */
-function alignOptionality(source: string, want: Map<string, boolean>): { source: string; changes: string[] } {
+function alignOptionality(
+  source: string,
+  want: Map<string, { optional: boolean; repeats: boolean }>,
+): { source: string; changes: string[] } {
   const bounds = bodyBounds(source, /type AllowedParams\s*=\s*\{/);
   if (!bounds) return { source, changes: [] };
 
   const changes: string[] = [];
   const body = source.slice(bounds.start, bounds.end);
-  const rebuilt = body.replace(/^(\s{2})(\w+)(\??):/gm, (whole, indent: string, key: string, q: string) => {
-    const optional = want.get(key);
-    if (optional === undefined) return whole; // not in the params map; leave alone
-    const isOptional = q === '?';
-    if (isOptional === optional) return whole;
-    changes.push(`${key}: ${isOptional ? 'optional -> required' : 'required -> optional'}`);
-    return `${indent}${key}${optional ? '?' : ''}:`;
-  });
+  const rebuilt = body.replace(
+    /^(\s{2})(\w+)(\??):([^;]+);/gm,
+    (whole, indent: string, key: string, q: string, declared: string) => {
+      const wanted = want.get(key);
+      if (!wanted) return whole; // not in the params map; leave alone
+
+      const isOptional = q === '?';
+      if (isOptional !== wanted.optional) {
+        changes.push(`${key}: ${isOptional ? 'optional -> required' : 'required -> optional'}`);
+      }
+
+      // Arity has to agree with `max` or the declared type is a lie in one of
+      // two ways. Typed as an array where max is 1, toNode() throws "array
+      // given and max is defined"; typed as a scalar where the element repeats,
+      // passing several needs a cast even though the runtime accepts them.
+      let type = declared.trim();
+      const isArray = /\[\]$/.test(type);
+      if (isArray !== wanted.repeats) {
+        changes.push(`${key}: ${isArray ? 'array -> single' : 'single -> array'}`);
+        type = isArray
+          ? type.replace(/\[\]$/, '')
+          : // a union has to be parenthesised before [] binds to all of it
+            `${/\|/.test(type) ? `(${type})` : type}[]`;
+      }
+
+      return `${indent}${key}${wanted.optional ? '?' : ''}: ${type};`;
+    },
+  );
 
   return { source: source.slice(0, bounds.start) + rebuilt + source.slice(bounds.end), changes };
 }
@@ -190,7 +213,7 @@ function main(): void {
     const taken = new Set<string>();
     const changes: string[] = [];
     const edits: { start: number; end: number; text: string }[] = [];
-    const wantOptional = new Map<string, boolean>();
+    const wantOptional = new Map<string, { optional: boolean; repeats: boolean }>();
 
     parsed.entries.forEach((entry) => {
       const child = matchChild(entry, type.children, taken);
@@ -199,7 +222,7 @@ function main(): void {
 
       const max = child.maxOccurs === null ? 'undefined' : String(child.maxOccurs);
       const order = String(type.children.indexOf(child) + 1);
-      wantOptional.set(entry.key, child.minOccurs === 0);
+      wantOptional.set(entry.key, { optional: child.minOccurs === 0, repeats: child.maxOccurs === null });
 
       if (entry.name !== child.name) changes.push(`${entry.key}: name '${entry.name}' -> '${child.name}'`);
       if (entry.max !== max) changes.push(`${entry.key}: max ${entry.max} -> ${max}`);

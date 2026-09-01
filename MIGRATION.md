@@ -68,3 +68,68 @@ and the sixth is annotated as needing a component type that does not exist yet.
   type codes, identification schemes, the `OTH` tax scheme.
 - `getAsXml()` works on any component. It previously threw for anything with
   more than one child, and emitted unwrapped children for the rest.
+
+# Migrating to 0.2.0
+
+The document model is unchanged and XML output is byte-for-byte identical to
+0.1.1. What changes is the _types_: `AllowedParams` was transcribed by hand and
+had drifted from the schema in 231 places, so the declarations now say what UBL
+says. Most of that is a relaxation and needs no action. Three groups do.
+
+## Four fields became required
+
+Each is `minOccurs="1"` in UBL, and omitting it produces XML the XSD rejects —
+so this turns a rejected submission into a compile error.
+
+| Component        | Field           | Element             |
+| ---------------- | --------------- | ------------------- |
+| `AddressLine`    | `line`          | `cbc:Line`          |
+| `DeliveryUnit`   | `batchQuantity` | `cbc:BatchQuantity` |
+| `OrderReference` | `id`            | `cbc:ID`            |
+| `TaxCategory`    | `taxScheme`     | `cac:TaxScheme`     |
+
+```ts
+// before — compiled, emitted invalid XML
+new TaxCategory({ id: '06' });
+
+// after
+new TaxCategory({ id: '06', taxScheme: new TaxScheme({ id: 'OTH' }) });
+```
+
+## Two fields became single values
+
+Both were typed as arrays against `maxOccurs="1"`, so passing an array
+type-checked and then threw `array given and max is defined` at serialization.
+They were unusable; now they work.
+
+| Component        | Field             | Was          | Now        |
+| ---------------- | ----------------- | ------------ | ---------- |
+| `CreditNoteLine` | `originatorParty` | `Party[]`    | `Party`    |
+| `Party`          | `language`        | `Language[]` | `Language` |
+
+## Thirty-two fields became arrays
+
+These are `maxOccurs="unbounded"` in UBL but were typed as single values, so
+setting more than one needed a cast. Sixty-one sibling fields already followed
+the array convention; these were the outliers. Wrap the value:
+
+```ts
+// before
+new Despatch({ notifyParty: party });
+
+// after
+new Despatch({ notifyParty: [party] });
+```
+
+The runtime always accepted both, so this is a type-level change only — no
+output differs.
+
+## Not a breaking change
+
+193 fields that were declared required are now optional, because UBL marks them
+`minOccurs="0"`. `CreditNoteLine` went from demanding 23 fields to one.
+Existing code that passes them keeps compiling.
+
+Ten elements the fork had commented out are now present, including
+`InvoiceLine.allowanceCharges`, `Signature.signatureMethod` and the six
+self-referential children such as `Party.agentParty`. All are optional.

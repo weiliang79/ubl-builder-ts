@@ -175,8 +175,8 @@ type AllowedParams = {
   id: string | UdtIdentifier;
   shippingPriorityLevelCode?: string | UdtCode;
   handlingCode?: string | UdtCode;
-  handlingInstructions?: string | UdtText;
-  informations?: string | UdtText;
+  handlingInstructions?: (string | UdtText)[];
+  informations?: (string | UdtText)[];
   grossWeightMeasure?: string | UdtMeasure;
   netWeightMeasure?: string | UdtMeasure;
   netNetWeightMeasure?: string | UdtMeasure;
@@ -189,8 +189,8 @@ type AllowedParams = {
   DeclaredForCarriageValueAmount?: string | UdtAmount;
   DeclaredStatisticsValueAmount?: string | UdtAmount;
   FreeOnBoardValueAmount?: string | UdtAmount;
-  SpecialInstructions?: string | UdtText;
-  DeliveryInstructions?: string | UdtText;
+  SpecialInstructions?: (string | UdtText)[];
+  DeliveryInstructions?: (string | UdtText)[];
   SplitConsignmentIndicator?: string | UdtIndicator;
   ConsignmentQuantity?: string | UdtQuantity;
 };

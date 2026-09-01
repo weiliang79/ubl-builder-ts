@@ -28,7 +28,7 @@ type AllowedParams = {
   name?: string | UdtName;
   taxTypeCode?: string | UdtCode;
   currencyCode?: string | UdtCode;
-  jurisdictionRegionAddress?: string | JurisdictionRegionAddress;
+  jurisdictionRegionAddress?: (string | JurisdictionRegionAddress)[];
 };
 
 /**

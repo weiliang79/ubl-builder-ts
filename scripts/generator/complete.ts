@@ -173,7 +173,17 @@ function main(): void {
     const paramsOpen = /type AllowedParams\s*=\s*\{/.exec(source);
     if (!mapOpen || !paramsOpen) return;
 
-    const present = new Set([...source.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
+    // Comment-stripped, for the same reason the fallback loop above is: a
+    // commented-out entry is not an emitted one. InvoiceLine.ts and
+    // DebitNoteLine.ts each carry a commented `cac:SubInvoiceLine` /
+    // `cac:SubDebitNoteLine`, which made this treat both as already present and
+    // skip them — silently, since a skip for this reason is not even reported.
+    const live = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !/^\s*\/\//.test(line))
+      .join('\n');
+    const present = new Set([...live.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
     const existingImports = importsOf(source);
     const usedKeys = new Set([...source.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));
 

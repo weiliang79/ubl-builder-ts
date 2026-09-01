@@ -36,7 +36,7 @@ type AllowedParams = {
   /** The primary email address of this contact */
   electronicMail?: string | UdtText;
   /** Free-form text conveying information that is not contained explicitly in other structures; in particular, a textual description of the circumstances under which this contact can be used (e.g., "emergency" or "after hours") */
-  note?: string | UdtText;
+  note?: (string | UdtText)[];
 };
 
 /**

@@ -20,7 +20,6 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     max: undefined,
     classRef: () => ValidityPeriod,
   },
-  // id: { order: 1,  attributeName: 'cbc:ID', max:1, classRef: UdtIdentifier },
 
   // ##################################  TODO CAC MISSING ################################################
 };
@@ -30,7 +29,7 @@ type AllowedParams = {
   previousPriceList?: PriceList;
   id?: string | UdtIdentifier;
   statusCode?: string | UdtCode;
-  validityPeriods?: ValidityPeriod;
+  validityPeriods?: ValidityPeriod[];
 };
 
 /**

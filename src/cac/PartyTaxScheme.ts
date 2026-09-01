@@ -46,7 +46,7 @@ type AllowedParams = {
   companyID?: string | UdtIdentifier;
   taxLevelCode?: string | UdtCode;
   exemptionReasonCode?: string | UdtCode;
-  exemptionReason?: string;
+  exemptionReason?: string[];
   registrationAddress?: RegistrationAddress;
   taxScheme: TaxScheme;
 };

@@ -64,13 +64,13 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 type AllowedParams = {
   priceAmount: string | UdtAmount; // The amount of the price. MANADATORY
   baseQuantity?: string | UdtQuantity;
-  priceChangeReasons?: string | UdtText;
+  priceChangeReasons?: (string | UdtText)[];
   priceTypeCode?: string | UdtCode;
   priceType?: string | UdtText;
   orderableUnitFactorRate?: string | UdtRate;
-  validityPeriods?: ValidityPeriod;
+  validityPeriods?: ValidityPeriod[];
   priceList?: PriceList;
-  allowanceCharges?: AllowanceCharge;
+  allowanceCharges?: AllowanceCharge[];
   pricingExchangeRate?: PricingExchangeRate;
 };
 

@@ -1,5 +1,6 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtIdentifier, UdtText } from '../datatypes/udt';
+import { Contact } from './Contact';
 import { Party, PartyParams } from './Party';
 
 /*
@@ -13,6 +14,9 @@ import { Party, PartyParams } from './Party';
  */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  despatchContact: { order: 5, attributeName: 'cac:DespatchContact', max: 1, classRef: Contact },
+  accountingContact: { order: 6, attributeName: 'cac:AccountingContact', max: 1, classRef: Contact },
+  sellerContact: { order: 7, attributeName: 'cac:SellerContact', max: 1, classRef: Contact },
   customerAssignedAccountID: {
     order: 1,
     attributeName: 'cbc:CustomerAssignedAccountID',
@@ -30,18 +34,20 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
   // ##################################  TODO CAC MISSING ################################################
 
-  // despatchContact: { order: 5, attributeName: 'cac:DespatchContact', max: 1, classRef: UdtText },
-  // accountingContact: { order: 6, attributeName: 'cac:AccountingContact', max: 1, classRef: UdtText },
-  // sellerContact: { order: 7, attributeName: 'cac:SellerContact', max: 1, classRef: UdtText },
-
   // ##################################  TODO CAC MISSING ################################################
 };
 
 type AllowedParams = {
+  /** A contact at this supplier party for despatches (pickups). */
+  despatchContact?: Contact;
+  /** A contact at this supplier party for accounting. */
+  accountingContact?: Contact;
+  /** The primary contact for this supplier party. */
+  sellerContact?: Contact;
   /** An identifier for this supplier party, assigned by the custom */
   customerAssignedAccountID?: string | UdtIdentifier;
   /** An additional identifier for this supplier party. */
-  additionalAccountIDs?: string | UdtIdentifier;
+  additionalAccountIDs?: (string | UdtIdentifier)[];
   /** Text describing the supplier's ability to send invoice data via a purchase card provider (e.g., VISA, MasterCard, American Express). */
   dataSendingCapability?: string | UdtText;
   /** The supplier party itself. */

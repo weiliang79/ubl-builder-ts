@@ -7,6 +7,7 @@ import { PartyIdentification, PartyIdentificationParams } from './PartyIdentific
 import { PartyLegalEntity } from './PartyLegalEntity';
 import { PartyName } from './PartyName';
 import { PartyTaxScheme, PartyTaxSchemeParams } from './PartyTaxScheme';
+import { PayeeFinancialAccount } from './PayeeFinancialAccount';
 import { PostalAddress } from './PostalAddress';
 
 /*
@@ -32,6 +33,7 @@ import { PostalAddress } from './PostalAddress';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  financialAccount: { order: 19, attributeName: 'cac:FinancialAccount', max: 1, classRef: PayeeFinancialAccount },
   agentParty: { order: 16, attributeName: 'cac:AgentParty', max: 1, classRef: () => Party },
   markCareIndicator: { order: 1, attributeName: 'cbc:MarkCareIndicator', max: 1, classRef: UdtIndicator },
   markAttentionIndicator: {
@@ -80,12 +82,13 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   // person: { order: 15,  attributeName: 'cac:Person', max: undefined, classRef: () => PostalAddress },
   // serviceProviderParty: { order: 17,  attributeName: 'cac:ServiceProviderParty', max: undefined, classRef: ServiceProviderParty },
   // powerOfAttorney: { order: 18,  attributeName: 'cac:PowerOfAttorney', max: undefined, classRef: PowerOfAttorney },
-  // financialAccount: { order: 19,  attributeName: 'cac:FinancialAccount', max: 1, classRef: FinancialAccount },
 
   // ##################################  TODO CAC MISSING ################################################
 };
 
 type AllowedParams = {
+  /** The financial account associated with this party. */
+  financialAccount?: PayeeFinancialAccount;
   /** A party who acts as an agent for this party. */
   agentParty?: Party;
   /**  An indicator that this party is "care of" (c/o) (true) or not (false) */
@@ -105,21 +108,18 @@ type AllowedParams = {
   /**  A name for this party */
   partyNames?: PartyName[];
   /** The language associated with this party */
-  language?: Language[];
+  language?: Language;
 
   // ##################################  TODO CAC MISSING ################################################
 
-  // postalAddress: { order: 10,  attributeName: 'cac:PostalAddress', max: 1, classRef: PostalAddress },
   // physicalLocation: "The physical location of this party.",
   partyTaxSchemes?: PartyTaxScheme[];
   partyLegalEntities?: PartyLegalEntity[];
   contact?: Contact;
   postalAddress?: PostalAddress;
   // person: { order: 15,  attributeName: 'cac:Person', max: 1, classRef: PostalAddress },
-  // postalAddress: { order: 16,  attributeName: 'cac:PostalAddress', max: 1, classRef: Person },
   // serviceProviderParty: { order: 17,  attributeName: 'cac:ServiceProviderParty', max: 1, classRef: ServiceProviderParty },
   // powerOfAttorney: { order: 18,  attributeName: 'cac:PowerOfAttorney', max: 1, classRef: PowerOfAttorney },
-  // financialAccount: { order: 19,  attributeName: 'cac:FinancialAccount', max: 1, classRef: FinancialAccount },
 
   // ##################################  TODO CAC MISSING ################################################
 

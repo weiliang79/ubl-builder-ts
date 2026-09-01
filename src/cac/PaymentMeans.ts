@@ -50,7 +50,7 @@ type AllowedParams = {
   paymentChannelCode?: string | UdtCode;
   instructionID?: string | UdtIdentifier;
   instructionNotes?: string[] | UdtText[];
-  paymentID?: string | UdtIdentifier;
+  paymentID?: (string | UdtIdentifier)[];
   payeeFinancialAccount?: string | PayeeFinancialAccount;
 };
 

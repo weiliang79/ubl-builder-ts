@@ -106,7 +106,7 @@ type AllowedParams = {
   id?: string | UdtIdentifier;
   paymentMeansIDs?: string[] | UdtIdentifier[];
   prepaidPaymentReferenceID?: string | UdtIdentifier;
-  notes?: string | UdtText;
+  notes?: (string | UdtText)[];
   referenceEventCode?: string | UdtCode;
   settlementDiscountPercent?: string | UdtCode;
   penaltySurchargePercent?: string | UdtPercent;

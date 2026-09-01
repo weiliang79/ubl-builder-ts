@@ -1,6 +1,7 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtCode, UdtDate, UdtIdentifier, UdtIndicator, UdtQuantity, UdtText } from '../datatypes/udt';
 import { UdtAmount } from '../datatypes/udt/UdtAmount';
+import { AllowanceCharge } from './AllowanceCharge';
 import { BillingReference } from './BillingReference';
 import { Delivery } from './Delivery';
 import { DeliveryTerms } from './DeliveryTerms';
@@ -48,6 +49,7 @@ import { TaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  allowanceCharges: { order: 23, attributeName: 'cac:AllowanceCharge', max: undefined, classRef: AllowanceCharge },
   subCreditNoteLines: {
     order: 27,
     attributeName: 'cac:SubCreditNoteLine',
@@ -120,10 +122,11 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   },
   // DiscrepancyResponses: { order: 13,  attributeName: 'cac:DiscrepancyResponse', max: undefined, classRef: null },
   // PricingReference: { order: 18,  attributeName: 'cac:PricingReference', max: 1, classRef: PricingReference },
-  // allowanceCharges: { order: 23,  attributeName: 'cac:AllowanceCharge', max: undefined, classRef: null },
 };
 
 type AllowedParams = {
+  /** An allowance or charge associated with this credit note. */
+  allowanceCharges?: AllowanceCharge[];
   /** A class defining one or more Credit Note Lines detailing the credit note line. */
   subCreditNoteLines?: CreditNoteLineType[];
   /** The price extension, calculated by multiplying the price per unit by the quantity of items on this credit note line. */
@@ -146,11 +149,10 @@ type AllowedParams = {
   billingReferences?: BillingReference[];
   documentReferences?: DocumentReference[];
   // PricingReference: '',
-  originatorParty?: Party[];
+  originatorParty?: Party;
   deliveries?: Delivery[];
   paymentTerms?: PaymentTerms[];
   taxTotals?: TaxTotal[];
-  // allowanceCharges: '',
   item?: Item;
   price?: Price;
   deliveryTerms?: DeliveryTerms[];
