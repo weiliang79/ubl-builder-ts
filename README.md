@@ -121,7 +121,7 @@ rejects conformant documents.
   client.
 - **Profile constraints.** MyInvois requires fields UBL marks optional; the
   library does not yet enforce that, and LHDN rejects them on submission.
-- **32 UBL child elements** are not yet reachable, each needing one of 26
+- **31 UBL child elements** are not yet reachable, each needing one of 26
   component types that do not exist here yet. Run `npm run generate:complete`
   for the current list, or `npm run report:schema` — the two agree. Everything
   absent is optional in UBL.

@@ -61,7 +61,11 @@ import {
   DeliveryAddress,
   DespatchAddress,
   JurisdictionRegionAddress,
+  OriginAddress,
+  PostalAddress,
+  PostalAddressTypeParams,
   RegistrationAddress,
+  ReturnAddress,
 } from './Address';
 import { CorporateRegistrationScheme, CorporateRegistrationSchemeParams } from './CorporateRegistrationScheme';
 import {
@@ -76,8 +80,6 @@ import { PartyTaxScheme, PartyTaxSchemeParams } from './PartyTaxScheme';
 import { TaxScheme, TaxSchemeParams } from './TaxScheme';
 
 import { AccountingContact, BuyerContact, Contact, ContactTypeParams, DeliveryContact } from './Contact';
-
-import { PostalAddress, PostalAddressTypeParams } from './PostalAddress';
 
 import { AccountingCustomerParty, BuyerCustomerParty, CustomerPartyParams } from './CustomerParty';
 
@@ -241,6 +243,7 @@ export {
   OrderLineReferenceParams,
   OrderReference,
   OrderReferenceParams,
+  OriginAddress,
   OriginatorDocumentReference,
   OriginatorDocumentReferenceParams,
   ParentDocumentLineReference,
@@ -287,6 +290,7 @@ export {
   RequestedDeliveryPeriod,
   RequestedDespatchPeriod,
   RequestLineReference,
+  ReturnAddress,
   SellersItemIdentification,
   SellersItemIdentificationParams,
   SellerSupplierParty,

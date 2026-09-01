@@ -275,6 +275,44 @@ stored it, and `new UBLExtensions({ UBLExtensions: [extension] })` serialised as
 an empty `<ext:UBLExtensions/>`. It now defaults rather than resets.
 `addUBLExtension` and `getDianUblExtension` are unaffected.
 
+## One `cac:AddressType`, not two
+
+`Address` and `PostalAddress` were separate classes implementing the same UBL
+type. `PostalAddress` is now an alias of `Address`, alongside `DeliveryAddress`,
+`DespatchAddress`, `JurisdictionRegionAddress`, `RegistrationAddress`,
+`OriginAddress` and `ReturnAddress` — one class, one alias per element it
+serves, as `Party` and `TaxTotal` already work.
+
+Every name still imports: `PostalAddress`, `PostalAddressTypeParams`,
+`AddressParams`. Two things change.
+
+**`addressLine` is now `addressLines`.** The two implementations named the same
+child differently and the surviving one is plural, matching the convention for
+an element UBL marks unbounded.
+
+```ts
+// before
+new PostalAddress({ addressLine: [new AddressLine({ line: '1 Jalan Contoh' })] });
+
+// after
+new PostalAddress({ addressLines: [new AddressLine({ line: '1 Jalan Contoh' })] });
+```
+
+**`getAsXml()` with no element name now returns `<cac:Address>`.** It is one
+class serving twelve elements, so there is no single right default; in a
+document the parent decides the name and nothing changes. Pass the name
+explicitly if you serialise an address on its own:
+
+```ts
+address.getAsXml(false, true, 'cac:PostalAddress');
+```
+
+`Address` previously defaulted to `cac:AddressType`, which is a type name — no
+such element exists, and that output failed XSD validation.
+
+Nothing that goes through an `Invoice` is affected: the golden fixture is
+byte-for-byte unchanged.
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them

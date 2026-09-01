@@ -1,5 +1,5 @@
+import { PostalAddress } from './Address';
 import { Party } from './Party';
-import { PostalAddress } from './PostalAddress';
 // 'use strict'
 
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';

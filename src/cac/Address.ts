@@ -88,8 +88,6 @@ type AllowedParams = {
   addressLines?: AddressLine[];
   /**  The country in which this address is situated */
   country?: Country;
-  // ##################################  TODO CAC MISSING ################################################
-  // postalAddress: { order: 10,  attributeName: 'cac:PostalAddress', max: 1, classRef: PostalAddress }
 };
 
 /**
@@ -103,7 +101,12 @@ class Address extends GenericAggregateComponent {
    * @param {string} name
    */
   constructor(content: AllowedParams) {
-    super(content, ParamsMap, 'cac:AddressType');
+    // cac:Address, not cac:AddressType. The default is only used when a
+    // component is serialised on its own — in a document the parent's params
+    // map supplies the name — but cac:AddressType is a *type* name and no such
+    // element exists, so getAsXml() with no override emitted XML the XSD
+    // rejects.
+    super(content, ParamsMap, 'cac:Address');
   }
 
   addAddressLine(value: string | AddressLine) {
@@ -134,27 +137,22 @@ class Address extends GenericAggregateComponent {
   }
 }
 
-// todo missing exports
 /*
-
-Element cac:ApplicableAddress
-Element cac:ApplicableTerritoryAddress
-Element cac:DeliveryAddress
-Element cac:DespatchAddress
-Element cac:JurisdictionRegionAddress
-Element cac:LocationAddress
-Element cac:OriginAddress
-Element cac:PostalAddress
-Element cac:RegistrationAddress
-Element cac:ResidenceAddress
-Element cac:ReturnAddress
-
-*/
+ * One class, one alias per element it serves — the convention Party.ts,
+ * TaxTotal.ts and Period.ts all follow. Twelve UBL elements are AddressType;
+ * these are the ones this package references. cac:ApplicableAddress,
+ * cac:ApplicableTerritoryAddress, cac:LocationAddress and cac:ResidenceAddress
+ * belong to types that have no component class yet.
+ */
 export {
   Address,
   AllowedParams as AddressParams,
   Address as DeliveryAddress,
   Address as DespatchAddress,
   Address as JurisdictionRegionAddress,
+  Address as OriginAddress,
+  Address as PostalAddress,
+  AllowedParams as PostalAddressTypeParams,
   Address as RegistrationAddress,
+  Address as ReturnAddress,
 };
