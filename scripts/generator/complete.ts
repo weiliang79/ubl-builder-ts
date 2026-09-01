@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild, SchemaType } from './schema';
-import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
+import { ALLOWED_PARAMS_OPEN, blankComments, bodyBounds } from './source';
 
 /**
  * Adds the elements the fork never transcribed.
@@ -208,12 +208,9 @@ function main(): void {
     // issuerParty is not allowed" from the constructor. Appending a second
     // `issuerParty?: IssuerParty` beside it is a duplicate identifier, so the
     // stale one is rewritten in place instead.
+    const paramsBody = bodyBounds(scan, ALLOWED_PARAMS_OPEN)!;
     const declaredFields = new Set(
-      [
-        ...blankComments(source)
-          .slice(paramsOpen.index + paramsOpen[0].length)
-          .matchAll(/^\s{2}(\w+)\??:/gm),
-      ].map((m) => m[1]),
+      [...scan.slice(paramsBody.start, paramsBody.end).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]),
     );
 
     const additions: Addition[] = [];
@@ -313,15 +310,14 @@ function main(): void {
     // alone. One at a time, because each rewrite moves everything after it.
     restated.forEach((a) => {
       scan = blankComments(source);
-      // Anchored inside the AllowedParams body, and matched a line at a time.
+      // Bounded to the AllowedParams body, and matched a line at a time.
       // Searching the whole file found the params-map entry of the same name
       // first, where `[^;]*;` ran on to the map's own closing `};` — one
       // rewrite swallowed the entire map. A declaration is one line.
-      const opened = ALLOWED_PARAMS_OPEN.exec(scan)!;
-      const from = opened.index + opened[0].length;
-      const at = new RegExp(`^  ${a.key}\\??:[^\\n]*;$`, 'm').exec(scan.slice(from));
+      const bounds = bodyBounds(scan, ALLOWED_PARAMS_OPEN)!;
+      const at = new RegExp(`^  ${a.key}\\??:[^\\n]*;$`, 'm').exec(scan.slice(bounds.start, bounds.end));
       if (!at) return;
-      const start = from + at.index;
+      const start = bounds.start + at.index;
       source = `${source.slice(0, start)}  ${a.key}?: ${a.tsType};${source.slice(start + at[0].length)}`;
     });
 

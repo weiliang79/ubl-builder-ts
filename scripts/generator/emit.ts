@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild } from './schema';
-import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
+import { ALLOWED_PARAMS_OPEN, blankComments, bodyBounds } from './source';
 
 /**
  * Corrects the params maps in place from the OASIS schemas.
@@ -88,25 +88,6 @@ function readEntries(source: string): { entries: Entry[]; bodyStart: number; bod
   return entries.length ? { entries, bodyStart, bodyEnd } : null;
 }
 
-/** Offsets of the `{ … }` body opened by `open`, by brace depth. */
-function bodyBounds(source: string, open: RegExp): { start: number; end: number } | null {
-  // Counted on the blanked copy: AllowedParams bodies here are full of
-  // commented-out map entries carrying braces. They balance today, but one
-  // stray `{` in a comment would run `end` to EOF and let the rewrite below
-  // loose on the class body.
-  const scan = blankComments(source);
-  const m = open.exec(scan);
-  if (!m) return null;
-  const start = (m.index as number) + m[0].length;
-  let depth = 1;
-  let i = start;
-  for (; i < scan.length && depth > 0; i += 1) {
-    if (scan[i] === '{') depth += 1;
-    else if (scan[i] === '}') depth -= 1;
-  }
-  return { start, end: i - 1 };
-}
-
 /**
  * Align AllowedParams optionality with the schema.
  *
@@ -124,7 +105,7 @@ function alignOptionality(
   source: string,
   want: Map<string, { optional: boolean; repeats: boolean }>,
 ): { source: string; changes: string[] } {
-  const bounds = bodyBounds(source, ALLOWED_PARAMS_OPEN);
+  const bounds = bodyBounds(blankComments(source), ALLOWED_PARAMS_OPEN);
   if (!bounds) return { source, changes: [] };
 
   const changes: string[] = [];

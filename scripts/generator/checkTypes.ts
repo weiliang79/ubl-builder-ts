@@ -10,18 +10,14 @@ import { join } from 'path';
  * revived in step 6.
  */
 
-import { ALLOWED_PARAMS_OPEN, blankComments } from './source';
+import { ALLOWED_PARAMS_OPEN, blankComments, bodyBounds } from './source';
 
 const CAC_DIR = join(__dirname, '..', '..', 'src', 'cac');
 
-function body(source: string, start: number): string {
-  let depth = 1;
-  let i = start;
-  for (; i < source.length && depth > 0; i += 1) {
-    if (source[i] === '{') depth += 1;
-    else if (source[i] === '}') depth -= 1;
-  }
-  return source.slice(start, i - 1);
+/** The body `open` introduces, as text. `source` is already comment-blanked. */
+function slice(source: string, open: RegExp): string {
+  const bounds = bodyBounds(source, open);
+  return bounds ? source.slice(bounds.start, bounds.end) : '';
 }
 
 let checked = 0;
@@ -48,11 +44,9 @@ readdirSync(CAC_DIR)
     }
 
     checked += 1;
-    const mapBody = body(source, map.index + map[0].length);
+    const mapBody = slice(source, /const ParamsMap[^=]*=\s*\{/);
     const mapKeys = [...mapBody.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]);
-    const typeKeys = new Set(
-      [...body(source, params.index + params[0].length).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]),
-    );
+    const typeKeys = new Set([...slice(source, ALLOWED_PARAMS_OPEN).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]));
 
     mapKeys
       .filter((key) => !typeKeys.has(key))
@@ -83,7 +77,7 @@ readdirSync(CAC_DIR)
     for (const m of mapBody.matchAll(/^\s{2}(\w+):\s*\{((?:[^{}]|\{[^{}]*\})*)\}/gm)) {
       maxOf.set(m[1], /max:\s*(\d+|undefined)/.exec(m[2])?.[1] ?? 'undefined');
     }
-    for (const m of body(source, params.index + params[0].length).matchAll(/^\s{2}(\w+)\??:\s*([^;]+);/gm)) {
+    for (const m of slice(source, ALLOWED_PARAMS_OPEN).matchAll(/^\s{2}(\w+)\??:\s*([^;]+);/gm)) {
       const [, key, declared] = m;
       const max = maxOf.get(key);
       if (max === undefined) continue;
