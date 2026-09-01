@@ -67,6 +67,8 @@ class ExchangeRate extends GenericAggregateComponent {
 export {
   ExchangeRate,
   AllowedParams as ExchangeRateParams,
+  ExchangeRate as PaymentAlternativeExchangeRate,
   ExchangeRate as PaymentExchangeRate,
   ExchangeRate as PricingExchangeRate,
+  ExchangeRate as TaxExchangeRate,
 };

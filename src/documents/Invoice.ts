@@ -6,8 +6,10 @@ import {
   AllowanceCharge,
   BillingReference,
   BillingReferenceParams,
+  BuyerCustomerParty,
   ContractDocumentReference,
   ContractDocumentReferenceParams,
+  CustomerPartyParams,
   Delivery,
   DeliveryTerms,
   DeliveryTermsParams,
@@ -24,24 +26,33 @@ import {
   OriginatorDocumentReference,
   OriginatorDocumentReferenceParams,
   PartyParams,
+  PayeeParty,
+  PaymentAlternativeExchangeRate,
   PaymentExchangeRate,
   PaymentMeans,
   PaymentMeansParams,
+  PaymentTerms,
+  PaymentTermsTypeParams,
   PaymentTypeParams,
   PeriodType,
   PeriodTypeParams,
   PrepaidPayment,
+  PricingExchangeRate,
   ProjectReference,
   ProjectReferenceParams,
   ReceiptDocumentReference,
   ReceiptDocumentReferenceParams,
+  SellerSupplierParty,
   Signature,
   SignatureParams,
   StatementDocumentReference,
   StatementDocumentReferenceParams,
+  SupplierPartyTypeParams,
+  TaxExchangeRate,
   TaxRepresentativeParty,
   TaxTotal,
   TaxTotalTypeParams,
+  WithholdingTaxTotal,
 } from '../cac';
 
 import { UBLExtensions } from '../ext';
@@ -62,9 +73,11 @@ import {
 } from '../datatypes/udt';
 
 import { IGenericKeyValue } from '../core/GenericAggregateComponent';
+import { ParsedElement, parseUblJson, parseXml } from '../core/parse';
 import { toUblJson, toXmlString, UblJsonNamespaces } from '../core/serialize';
 import { NodeSource, XmlNode } from '../core/xmlNode';
 import { INVOICE_CHILDREN_MAP } from './ChildrenMap';
+import { paramsFrom } from './fromParsed';
 
 export default class Invoice {
   /** Attributes on the Invoice root element — namespace declarations and the like. */
@@ -82,6 +95,56 @@ export default class Invoice {
    */
   constructor(id?: string) {
     if (id !== undefined) this.setID(id);
+  }
+
+  /**
+   * Read an invoice back from XML.
+   *
+   * The inverse of {@link getXml}. Children are matched against
+   * INVOICE_CHILDREN_MAP and assigned through the same path a caller's setter
+   * uses, so a parsed document is indistinguishable from a built one.
+   *
+   * Root attributes come back as properties, which is what makes a round trip
+   * byte-identical: the namespace declarations and xsi:schemaLocation are part
+   * of the document, not something the profile re-derives.
+   *
+   * An element this library cannot represent, or one that appears more often
+   * than UBL allows, is reported rather than dropped. 32 UBL children still
+   * have no component class, and a document carrying one would otherwise lose
+   * it silently on the way through.
+   */
+  static fromXml(xml: string): Invoice {
+    return Invoice.fromParsed(parseXml(xml));
+  }
+
+  /**
+   * Read an invoice back from OASIS UBL JSON (Alternative Representation v2.0).
+   *
+   * The inverse of {@link getJson}. The namespaces the JSON form hoists to
+   * `_D` / `_A` / `_B` / `_E` are not properties of the invoice, so a document
+   * arriving this way has none set; call the profile's `defaults()` before
+   * rendering it as XML.
+   */
+  static fromJson(document: Record<string, unknown>): Invoice {
+    return Invoice.fromParsed(parseUblJson(document));
+  }
+
+  private static fromParsed(root: ParsedElement): Invoice {
+    const invoice = new Invoice();
+    Object.entries(root.attributes).forEach(([key, value]) => invoice.addProperty(key, value));
+
+    const problems: string[] = [];
+    const params = paramsFrom(root, INVOICE_CHILDREN_MAP, root.name, problems);
+    if (problems.length) {
+      throw new Error(`this document cannot be read: ${problems.join('; ')}`);
+    }
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) value.forEach((item) => invoice.assignChild(key, item));
+      else invoice.assignChild(key, value);
+    });
+
+    return invoice;
   }
 
   /** Add an attribute to the Invoice root, typically a namespace declaration. */
@@ -604,30 +667,27 @@ export default class Invoice {
   }
 
   /**
-   * 37.  The payee.
-   * @param { any } input
-   * @returns {Invoice}
+   * 37. The payee.
+   * @param value
    */
-  setPayeeParty(_input: any) {
-    throw new Error('not implemented');
+  setPayeeParty(value: PayeeParty | PartyParams): Invoice {
+    return this.assignChild('payeeParty', value);
   }
 
   /**
-   * 38.  The buyer
-   * @param { any } input
-   * @returns {Invoice}
+   * 38. The buyer.
+   * @param value
    */
-  setBuyerCustomerParty(_input: any) {
-    throw new Error('not implemented');
+  setBuyerCustomerParty(value: BuyerCustomerParty | CustomerPartyParams): Invoice {
+    return this.assignChild('buyerCustomerParty', value);
   }
 
   /**
-   * 39.  The seller
-   * @param { any } input
-   * @returns {Invoice}
+   * 39. The seller.
+   * @param value
    */
-  setSellerSupplierParty(_input: any) {
-    throw new Error('not implemented');
+  setSellerSupplierParty(value: SellerSupplierParty | SupplierPartyTypeParams): Invoice {
+    return this.assignChild('sellerSupplierParty', value);
   }
 
   /**
@@ -677,11 +737,11 @@ export default class Invoice {
   }
 
   /**
-   * 44 PrepaidPayment, PaymentTypeParams
+   * 44. A set of payment terms associated with this document.
    * @param value
    */
-  addPaymentTerm(_value: any) {
-    throw new Error('not implemented');
+  addPaymentTerm(value: PaymentTerms | PaymentTermsTypeParams): Invoice {
+    return this.assignChild('paymentTerms', value);
   }
 
   /**
@@ -711,19 +771,19 @@ export default class Invoice {
   }
 
   /**
-   * 47 A discount or charge that applies to a price component..
+   * 47. The exchange rate between the document currency and the tax currency.
    * @param value
    */
-  setTaxExchangeRate(_value: any) {
-    throw new Error('not implemented');
+  setTaxExchangeRate(value: TaxExchangeRate | ExchangeRateParams): Invoice {
+    return this.assignChild('taxExchangeRate', value);
   }
 
   /**
-   * 48 The exchange rate between the document currency and the pricing currency..
+   * 48. The exchange rate between the document currency and the pricing currency.
    * @param value
    */
-  setPricingExchangeRate(_value: any) {
-    throw new Error('not implemented');
+  setPricingExchangeRate(value: PricingExchangeRate | ExchangeRateParams): Invoice {
+    return this.assignChild('pricingExchangeRate', value);
   }
 
   /**
@@ -736,11 +796,11 @@ export default class Invoice {
   }
 
   /**
-   * 50 The exchange rate between the document currency and the payment alternative currency.
-   * @param { any } value
+   * 50. The exchange rate between the document currency and the payment alternative currency.
+   * @param value
    */
-  setPaymentAlternativeExchangeRate(_value: any) {
-    throw new Error('not implemented');
+  setPaymentAlternativeExchangeRate(value: PaymentAlternativeExchangeRate | ExchangeRateParams): Invoice {
+    return this.assignChild('paymentAlternativeExchangeRate', value);
   }
 
   /**
@@ -758,11 +818,11 @@ export default class Invoice {
   }
 
   /**
-   * 52 the total withholding tax
-   * @param { any } value
+   * 52. The total withholding tax.
+   * @param value
    */
-  addWithholdingTaxTotal(_value: any) {
-    throw new Error('not implemented');
+  addWithholdingTaxTotal(value: WithholdingTaxTotal | TaxTotalTypeParams): Invoice {
+    return this.assignChild('withholdingTaxTotals', value);
   }
 
   /**
@@ -823,6 +883,31 @@ export default class Invoice {
    * @param value value
    * @param classRefs list of allowed classes
    */
+  /**
+   * Build and store a child using the class the document map names for it.
+   *
+   * The sixty setters above each restate their own class, which is why eight
+   * children could sit in INVOICE_CHILDREN_MAP with nothing but a `throw new
+   * Error('not implemented')` against them. Anything added from here on reads
+   * the class from the map, so a child that exists in the map can always be
+   * set, and `fromXml` assigns through the same path a caller would.
+   */
+  private assignChild(key: string, value: unknown, attributes?: Record<string, unknown>): Invoice {
+    const entry = INVOICE_CHILDREN_MAP[key];
+    if (!entry) throw new Error(`${key} is not a child of Invoice`);
+
+    const ClassRef = entry.classRef as new (content: unknown, attributes?: unknown) => unknown;
+    const built = value instanceof ClassRef ? value : new ClassRef(value, attributes);
+
+    if (entry.max === undefined) {
+      if (!this.children[key]) this.children[key] = [];
+      this.children[key].push(built);
+    } else {
+      this.children[key] = built;
+    }
+    return this;
+  }
+
   private validateInstanceOf(value: any, classRefs: any[]): void {
     // if(!value){
     //   this.children[attribute] = null

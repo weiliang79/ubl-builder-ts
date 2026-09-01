@@ -216,5 +216,6 @@ export {
   Party as NotifyParty,
   Party,
   AllowedParams as PartyParams,
+  Party as PayeeParty,
   Party as TaxRepresentativeParty,
 };

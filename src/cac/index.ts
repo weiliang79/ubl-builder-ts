@@ -37,7 +37,7 @@ import {
 import { ProjectReference, ProjectReferenceParams } from './ProjectReference';
 import { Signature, SignatureParams } from './Signature';
 
-import { AccountingSupplierParty, SupplierPartyTypeParams } from './SupplierParty';
+import { AccountingSupplierParty, SellerSupplierParty, SupplierPartyTypeParams } from './SupplierParty';
 
 import {
   CarrierParty,
@@ -48,6 +48,7 @@ import {
   NotifyParty,
   Party,
   PartyParams,
+  PayeeParty,
   TaxRepresentativeParty,
 } from './Party';
 
@@ -78,7 +79,7 @@ import { AccountingContact, BuyerContact, Contact, ContactTypeParams, DeliveryCo
 
 import { PostalAddress, PostalAddressTypeParams } from './PostalAddress';
 
-import { AccountingCustomerParty, CustomerPartyParams } from './CustomerParty';
+import { AccountingCustomerParty, BuyerCustomerParty, CustomerPartyParams } from './CustomerParty';
 
 import { Despatch, DespatchParams } from './Despatch';
 
@@ -88,7 +89,14 @@ import { Delivery, DeliveryTypeParams } from './Delivery';
 import { ShipmentType, ShipmentTypeParams } from './Shipment';
 
 import { DeliveryTerms, DeliveryTermsParams } from './DeliveryTerms';
-import { ExchangeRate, ExchangeRateParams, PaymentExchangeRate, PricingExchangeRate } from './ExchangeRate';
+import {
+  ExchangeRate,
+  ExchangeRateParams,
+  PaymentAlternativeExchangeRate,
+  PaymentExchangeRate,
+  PricingExchangeRate,
+  TaxExchangeRate,
+} from './ExchangeRate';
 import {
   CallForTendersLineReference,
   CatalogueLineReference,
@@ -154,6 +162,7 @@ export {
   BillingReference,
   BillingReferenceParams,
   BuyerContact,
+  BuyerCustomerParty,
   CallForTendersLineReference,
   CarrierParty,
   CatalogueLineReference,
@@ -247,6 +256,8 @@ export {
   PartyTaxSchemeParams,
   PayeeFinancialAccount,
   PayeeFinancialAccountParams,
+  PayeeParty,
+  PaymentAlternativeExchangeRate,
   PaymentExchangeRate,
   PaymentMeans,
   PaymentMeansParams,
@@ -278,6 +289,7 @@ export {
   RequestLineReference,
   SellersItemIdentification,
   SellersItemIdentificationParams,
+  SellerSupplierParty,
   ShipmentType,
   ShipmentTypeParams,
   Signature,
@@ -289,6 +301,7 @@ export {
   SupplyItem,
   TaxCategory,
   TaxCategoryTypeParams,
+  TaxExchangeRate,
   TaxRepresentativeParty,
   TaxScheme,
   TaxSchemeParams,

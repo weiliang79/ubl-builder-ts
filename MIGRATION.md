@@ -256,6 +256,25 @@ AddressParams(…)` — should use `Address`.
 `IssuerPartyParams` existed on the module and was missing from the barrel;
 it is exported now.
 
+## New: reading a document back
+
+`Invoice.fromXml(xml)` and `Invoice.fromJson(document)` are the inverses of
+`getXml()` and `getJson()`. Nothing existing changes.
+
+Both walk the same tables that serialise — which is why the document map needed
+a `classRef` column and why the eight children with no setter had to be
+implemented first: a round trip cannot preserve what the document has no way to
+hold. The golden fixture reads back and renders to the same 4542 bytes, and the
+JSON fixture renders to the same XML.
+
+## `UBLExtensions` keeps what it is constructed with
+
+Its constructor assigned `this.attributes.UBLExtensions = []` immediately after
+`super()`, so anything passed in was discarded the line after `assignContent`
+stored it, and `new UBLExtensions({ UBLExtensions: [extension] })` serialised as
+an empty `<ext:UBLExtensions/>`. It now defaults rather than resets.
+`addUBLExtension` and `getDianUblExtension` are unaffected.
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them

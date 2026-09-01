@@ -29,7 +29,12 @@ class UBLExtensions extends GenericAggregateComponent {
    */
   constructor(content?: AllowedParams, name: string = 'ext:UBLExtensions') {
     super(content, ParamsMap, name);
-    this.attributes.UBLExtensions = [];
+    // Default, not reset. This assigned unconditionally, so anything passed to
+    // the constructor was discarded the line after assignContent stored it:
+    // `new UBLExtensions({ UBLExtensions: [extension] })` serialised as an
+    // empty `<ext:UBLExtensions/>`. addUBLExtension and getDianUblExtension
+    // both index this directly, so it still has to be an array either way.
+    if (!Array.isArray(this.attributes.UBLExtensions)) this.attributes.UBLExtensions = [];
   }
 
   /**
