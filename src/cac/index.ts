@@ -124,6 +124,17 @@ import { DebitNoteLine, DebitNoteLineParams } from './DebitNoteLine';
 import { InvoiceLine, InvoiceLineParams } from './InvoiceLine';
 import { Price, PriceParams } from './Price';
 
+// Components UBL defines and this package could not reach: not in the barrel,
+// and `./cac/<file>` is not an exported subpath, so nothing outside could
+// name them at all.
+import { Attachment, AttachmentParams } from './Attachment';
+import { CommodityClassification, CommodityClassificationParams } from './CommodityClassification';
+import { ExternalReference, ExternalReferenceParams } from './ExternalReference';
+import { FinancialInstitution, FinancialInstitutionParams } from './FinancialInstitution';
+import { FinancialInstitutionBranch, FinancialInstitutionBranchParams } from './FinancialInstitutionBranch';
+import { ItemPriceExtension, ItemPriceExtensionParams } from './ItemPriceExtension';
+import { SellersItemIdentification, SellersItemIdentificationParams } from './SellersItemIdentification';
+
 export {
   AccountingContact,
   AccountingCustomerParty,
@@ -137,6 +148,8 @@ export {
   AllowanceCharge,
   AllowanceChargeParams,
   AlternativeDeliveryLocation,
+  Attachment,
+  AttachmentParams,
   BillingReference,
   BillingReferenceParams,
   BuyerContact,
@@ -145,6 +158,8 @@ export {
   CatalogueLineReference,
   ClassifiedTaxCategory,
   ClassifiedTaxCategoryTypeParams,
+  CommodityClassification,
+  CommodityClassificationParams,
   Contact,
   ContactTypeParams,
   ContractDocumentReference,
@@ -183,6 +198,12 @@ export {
   EstimatedDespatchPeriod,
   ExchangeRate,
   ExchangeRateParams,
+  ExternalReference,
+  ExternalReferenceParams,
+  FinancialInstitution,
+  FinancialInstitutionBranch,
+  FinancialInstitutionBranchParams,
+  FinancialInstitutionParams,
   InvoiceDocumentReference,
   InvoiceDocumentReferenceParams,
   InvoiceLine,
@@ -190,6 +211,8 @@ export {
   InvoicePeriodBasic,
   IssuerParty,
   Item,
+  ItemPriceExtension,
+  ItemPriceExtensionParams,
   ItemTypeParams,
   JurisdictionRegionAddress,
   Language,
@@ -251,6 +274,8 @@ export {
   RequestedDeliveryPeriod,
   RequestedDespatchPeriod,
   RequestLineReference,
+  SellersItemIdentification,
+  SellersItemIdentificationParams,
   ShipmentType,
   ShipmentTypeParams,
   Signature,

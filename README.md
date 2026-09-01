@@ -62,16 +62,16 @@ same document as UBL JSON.
 
 The root import re-exports everything. Subpaths are narrower:
 
-| Import                    | Contains                                                        |
-| ------------------------- | --------------------------------------------------------------- |
-| `@weiliang79/ubl-builder` | everything                                                      |
-| `.../documents`           | `Invoice`                                                       |
-| `.../cac`                 | aggregate components — `Party`, `TaxTotal`, `InvoiceLine`, …    |
+| Import                    | Contains                                                           |
+| ------------------------- | ------------------------------------------------------------------ |
+| `@weiliang79/ubl-builder` | everything                                                         |
+| `.../documents`           | `Invoice`                                                          |
+| `.../cac`                 | aggregate components — `Party`, `TaxTotal`, `InvoiceLine`, …       |
 | `.../datatypes`           | `UdtAmount`, `UdtCode`, `UBLVersionID`, the CCT and XSD primitives |
-| `.../ext`                 | `UBLExtension`, `UBLExtensions`                                 |
-| `.../profiles/myinvois`   | Malaysia — LHDN vocabulary and profile                          |
-| `.../profiles/dian`       | Colombia — retained, unmaintained                               |
-| `.../core`                | the component base, serializers and node types                  |
+| `.../ext`                 | `UBLExtension`, `UBLExtensions`                                    |
+| `.../profiles/myinvois`   | Malaysia — LHDN vocabulary and profile                             |
+| `.../profiles/dian`       | Colombia — retained, unmaintained                                  |
+| `.../core`                | the component base, serializers and node types                     |
 
 ## Schemas
 
@@ -82,7 +82,7 @@ not published.
 ```sh
 npm run report:schema     # differences between the components and the schemas
 npm run check:schema      # fail if any params map disagrees (runs in CI)
-npm run check:types       # fail if a params map and its params type disagree on a key
+npm run check:types       # fail if a component disagrees with its params map, or is unexported
 npm run check:classref    # fail if a classRef is not the class implementing that element's type
 npm run validate:xsd      # validate the golden fixtures against the XSD
 ```
