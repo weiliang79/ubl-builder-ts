@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild, SchemaType } from './schema';
+import { blankComments } from './source';
 
 /**
  * Adds the elements the fork never transcribed.
@@ -49,7 +50,9 @@ function learnByType(
     const type = schemaTypeFor(stem, schema);
     if (!type) return;
     const key = schema.elements.get(`cac:${stem}`) ?? `cac:${type.name}`;
-    const source = readFileSync(join(CAC_DIR, file), 'utf8');
+    // Blanked: the `export { … }` scan below is not line-anchored, so a
+    // commented-out export block would otherwise be learned as real.
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
 
     // The importable name is the *exported* one, which is often an alias:
     // TaxTotal.ts declares TaxTotalType and exports it as TaxTotal, and
@@ -89,12 +92,7 @@ function learnByType(
   // So comments are stripped first, and a classRef is only believed if it looks
   // like a class and the module it came from actually exports it.
   files.forEach((file) => {
-    const raw = readFileSync(join(CAC_DIR, file), 'utf8');
-    const source = raw
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .filter((line) => !/^\s*\/\//.test(line))
-      .join('\n');
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
     for (const m of source.matchAll(/attributeName:\s*'(cac:[^']+)',[^}]*?classRef:\s*(?:\(\) =>\s*)?(\w+)/g)) {
       const type = schema.elements.get(m[1]);
       const ref = m[2];
@@ -185,11 +183,7 @@ function main(): void {
     // DebitNoteLine.ts each carry a commented `cac:SubInvoiceLine` /
     // `cac:SubDebitNoteLine`, which made this treat both as already present and
     // skip them — silently, since a skip for this reason is not even reported.
-    const live = source
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .filter((line) => !/^\s*\/\//.test(line))
-      .join('\n');
+    const live = blankComments(source);
     const present = new Set([...live.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
     const existingImports = importsOf(source);
     const usedKeys = new Set([...source.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));

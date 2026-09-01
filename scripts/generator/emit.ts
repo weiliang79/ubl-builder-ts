@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, Schema, SchemaChild } from './schema';
+import { blankComments } from './source';
 
 /**
  * Corrects the params maps in place from the OASIS schemas.
@@ -35,51 +36,6 @@ interface Entry {
  * Prettier wraps longer entries across several lines, so a line-oriented
  * parser sees only a third of the files.
  */
-/**
- * Replace every comment with the same number of spaces.
- *
- * Blanking rather than stripping, because every offset in this file indexes
- * into the original source for surgical splicing — removing characters would
- * shift them all. Newlines are kept so line-anchored patterns still work.
- *
- * This exists because commented-out entries were being read as live ones.
- * ProjectReference.ts carries a commented `issueDate` naming
- * cac:WorkPhaseReference (0..*), which overwrote the real `issueDate`
- * (cbc:IssueDate, max 1) and pluralised a scalar field into one that throws.
- * The same bug has now been found in three separate scans; this is the
- * shared fix.
- */
-function blankComments(source: string): string {
-  const out = source.split('');
-  let i = 0;
-  let quote: string | null = null;
-  while (i < source.length) {
-    const c = source[i];
-    if (quote) {
-      if (c === '\\') i += 1;
-      else if (c === quote) quote = null;
-      i += 1;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === '`') {
-      quote = c;
-      i += 1;
-      continue;
-    }
-    if (c === '/' && source[i + 1] === '/') {
-      while (i < source.length && source[i] !== '\n') out[i++] = ' ';
-      continue;
-    }
-    if (c === '/' && source[i + 1] === '*') {
-      const end = source.indexOf('*/', i + 2);
-      const stop = end === -1 ? source.length : end + 2;
-      for (; i < stop; i += 1) if (source[i] !== '\n') out[i] = ' ';
-      continue;
-    }
-    i += 1;
-  }
-  return out.join('');
-}
 
 function readEntries(source: string): { entries: Entry[]; bodyStart: number; bodyEnd: number } | null {
   const scan = blankComments(source);

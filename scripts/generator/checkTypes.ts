@@ -10,6 +10,8 @@ import { join } from 'path';
  * revived in step 6.
  */
 
+import { blankComments } from './source';
+
 const CAC_DIR = join(__dirname, '..', '..', 'src', 'cac');
 
 function body(source: string, start: number): string {
@@ -28,7 +30,10 @@ const problems: string[] = [];
 readdirSync(CAC_DIR)
   .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
   .forEach((file) => {
-    const source = readFileSync(join(CAC_DIR, file), 'utf8');
+    // Blanked, so a commented-out entry is neither read as live nor able to
+    // throw the brace counting off. This gate exists to catch declarations
+    // that disagree with the map; it must not be fooled by the same trick.
+    const source = blankComments(readFileSync(join(CAC_DIR, file), 'utf8'));
     const map = /const ParamsMap[^=]*=\s*\{/.exec(source);
     const params = /type AllowedParams\s*=\s*\{/.exec(source);
     if (!map || !params) return;

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'fs';
 import { basename, join } from 'path';
 import { loadSchema, SchemaType } from './schema';
+import { blankComments } from './source';
 
 /**
  * Compares the hand-written params maps against the OASIS schemas.
@@ -21,11 +22,7 @@ interface HandEntry {
 /** Pull params-map entries out of a source file without executing it. */
 function readHandMap(source: string): HandEntry[] {
   // Commented-out entries are common in these files and must not be counted.
-  const live = source
-    .split('\n')
-    .filter((line) => !line.trim().startsWith('//'))
-    .join('\n')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const live = blankComments(source);
 
   // Only the params map itself; AllowedParams and class bodies follow it.
   const block = /(?:const ParamsMap|const \w*CHILDREN_MAP)[^=]*=\s*\{([\s\S]*?)\n\};/.exec(live);
@@ -46,20 +43,37 @@ function readHandMap(source: string): HandEntry[] {
   return entries;
 }
 
-function compare(typeName: string, schema: SchemaType, hand: HandEntry[]): string[] {
-  const problems: string[] = [];
+/**
+ * Tagged rather than classified by the message's first word, which is what the
+ * totals used to do. That parsing failed silently: renaming one message moved
+ * ten findings into the "not in the schema" bucket and every printed total was
+ * wrong with nothing to indicate it.
+ */
+interface Problem {
+  kind: 'missing' | 'max' | 'order' | 'extra';
+  text: string;
+}
+
+function compare(typeName: string, schema: SchemaType, hand: HandEntry[]): Problem[] {
+  const problems: Problem[] = [];
   const handByElement = new Map(hand.map((e) => [e.elementName, e]));
   const schemaNames = new Set(schema.children.map((c) => c.name));
 
   schema.children.forEach((child) => {
     const entry = handByElement.get(child.name);
     if (!entry) {
-      problems.push(`missing      ${child.name} [${child.minOccurs}..${child.maxOccurs ?? '*'}]`);
+      problems.push({
+        kind: 'missing',
+        text: `missing      ${child.name} [${child.minOccurs}..${child.maxOccurs ?? '*'}]`,
+      });
       return;
     }
     if (entry.max !== child.maxOccurs) {
       const show = (v: number | null) => (v === null ? 'unbounded' : String(v));
-      problems.push(`max          ${child.name}: have ${show(entry.max)}, schema ${show(child.maxOccurs)}`);
+      problems.push({
+        kind: 'max',
+        text: `max          ${child.name}: have ${show(entry.max)}, schema ${show(child.maxOccurs)}`,
+      });
     }
   });
 
@@ -68,15 +82,27 @@ function compare(typeName: string, schema: SchemaType, hand: HandEntry[]): strin
   // defect into a cascade.
   const shared = new Set(hand.map((e) => e.elementName).filter((n) => schemaNames.has(n)));
   const handOrder = hand.map((e) => e.elementName).filter((n) => shared.has(n));
+  // Declaration order in the object literal, which is cosmetic: toNode() sorts
+  // on the `order` field before emitting, and check:schema verifies those
+  // values against the schema. It is reported because a map whose declaration
+  // order disagrees with its own `order` values invites the assumption that
+  // position matters — but it is not a defect, and generated additions are
+  // prepended, so it grows whenever complete.ts adds an element.
   const schemaOrder = schema.children.map((c) => c.name).filter((n) => shared.has(n));
   if (handOrder.join('|') !== schemaOrder.join('|')) {
     const firstDivergence = handOrder.findIndex((n, i) => n !== schemaOrder[i]);
-    problems.push(
-      `order        diverges at ${handOrder[firstDivergence]}; schema expects ${schemaOrder[firstDivergence]}`,
-    );
+    problems.push({
+      kind: 'order',
+      text:
+        `declared out of sequence at ${handOrder[firstDivergence]}; schema lists ` +
+        `${schemaOrder[firstDivergence]} there (cosmetic — the \`order\` values are ` +
+        `what serialise, and check:schema gates them)`,
+    });
   }
 
-  hand.filter((e) => !schemaNames.has(e.elementName)).forEach((e) => problems.push(`not in schema ${e.elementName}`));
+  hand
+    .filter((e) => !schemaNames.has(e.elementName))
+    .forEach((e) => problems.push({ kind: 'extra', text: `not in schema ${e.elementName}` }));
 
   return problems;
 }
@@ -117,15 +143,11 @@ function main(): void {
     }
 
     problems.forEach((p) => {
-      const kind = p.split(/\s+/)[0];
-      if (kind === 'missing') totals.missing += 1;
-      else if (kind === 'max') totals.max += 1;
-      else if (kind === 'order') totals.order += 1;
-      else totals.extra += 1;
+      totals[p.kind] += 1;
     });
 
     console.log(`\n${file}  (${typeName})`);
-    problems.slice(0, 8).forEach((p) => console.log(`    ${p}`));
+    problems.slice(0, 8).forEach((p) => console.log(`    ${p.text}`));
     if (problems.length > 8) console.log(`    … and ${problems.length - 8} more`);
   });
 
@@ -135,7 +157,7 @@ function main(): void {
   console.log(`with differences      ${checked - clean}`);
   console.log(`\nmissing elements      ${totals.missing}`);
   console.log(`wrong maxOccurs       ${totals.max}`);
-  console.log(`wrong sequence order  ${totals.order}`);
+  console.log(`declared out of order ${totals.order}  (cosmetic; see check:schema for real order defects)`);
   console.log(`not in the schema     ${totals.extra}`);
   if (unmatched.length) console.log(`\nno schema type matched: ${unmatched.join(', ')}`);
 }
