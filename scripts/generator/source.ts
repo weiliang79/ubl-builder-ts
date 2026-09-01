@@ -73,3 +73,33 @@ export function blankComments(source: string): string {
  * cannot read rather than passing over it.
  */
 export const ALLOWED_PARAMS_OPEN = /(?:type AllowedParams\s*=\s*|interface AllowedParams\s*)\{/;
+
+/**
+ * Offsets of the `{ … }` body that `open` matches the opening of.
+ *
+ * `scan` must already be comment-blanked. Brace counting over raw source runs
+ * `end` to EOF the moment a comment carries a stray `{`, and these files are
+ * full of commented-out map entries; blanking first is what makes the count
+ * mean anything. Offsets, not a substring, because callers splice the original
+ * source at them — blanking preserves length, so the indices line up.
+ *
+ * Three scripts had grown their own brace counter and complete.ts had none at
+ * all, which is why its two new scans ran from the opening brace to end of
+ * file. Nothing outside AllowedParams matches their patterns today, but the
+ * same over-reach has already cost this generator two bugs: an unbounded
+ * `[\s\S]*?` in the arity gate that swallowed the next entry's `max`, and an
+ * `[^;]*;` in the field rewriter that ran on to the params map's own closing
+ * brace and deleted the map.
+ */
+export function bodyBounds(scan: string, open: RegExp): { start: number; end: number } | null {
+  const m = open.exec(scan);
+  if (!m) return null;
+  const start = m.index + m[0].length;
+  let depth = 1;
+  let i = start;
+  for (; i < scan.length && depth > 0; i += 1) {
+    if (scan[i] === '{') depth += 1;
+    else if (scan[i] === '}') depth -= 1;
+  }
+  return { start, end: i - 1 };
+}

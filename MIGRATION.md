@@ -147,11 +147,27 @@ every generator scan matched only the second form. `DocumentReference`,
 The scans now accept both, and `check:types` fails on a component it cannot
 read rather than skipping it — which is how this was found.
 
+## `DocumentReference.issuerParty` takes a party, not a string
+
+It was declared `issuerParty?: string` with no params-map entry behind it, so
+the field compiled and then threw `attribute issuerParty is not allowed` from
+the constructor. `cac:IssuerParty` now works.
+
+```ts
+new DespatchDocumentReference({ id: 'DN-1', issuerParty: new IssuerParty({ … }) });
+```
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them
 `minOccurs="0"`. `CreditNoteLine` went from demanding 23 fields to one.
 Existing code that passes them keeps compiling.
+
+Nineteen child elements UBL defines were missing entirely and are now present:
+seventeen on `PostalAddress` — `buildingName`, `floor`, `room`, `postbox`,
+`markCare`, `district` and the rest of `AddressType` — plus
+`DocumentReference.issuerParty` and `ItemPriceExtension.taxTotals`. All are
+optional.
 
 Fourteen params-map entries the fork had commented out are now live, including
 `CreditNoteLine.allowanceCharges`, `DeliveryTerms.allowanceCharge`,

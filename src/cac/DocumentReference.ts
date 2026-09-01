@@ -6,12 +6,13 @@ import { UdtCode, UdtDate, UdtIdentifier, UdtIndicator, UdtText, UdtTime } from 
 /* TODO GANERIC CLASSES */
 
 import { Attachment } from './Attachment';
+import { IssuerParty } from './Party';
 import { ValidityPeriod } from './Period';
 
 // const { ValidityPeriod, ValidityPeriodParams } = require("./ValidityPeriod");
-// const { IssuerParty, IssuerPartyParams } = require("./Party");
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  issuerParty: { order: 16, attributeName: 'cac:IssuerParty', max: 1, classRef: () => IssuerParty },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   copyIndicator: { order: 2, attributeName: 'cbc:CopyIndicator', max: 1, classRef: UdtIndicator },
   uuid: { order: 3, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
@@ -32,7 +33,6 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   },
   attachment: { order: 14, attributeName: 'cac:Attachment', max: 1, classRef: () => Attachment },
   validityPeriod: { order: 15, attributeName: 'cac:ValidityPeriod', max: 1, classRef: () => ValidityPeriod },
-  // issuerParty: { order: 16, attributeName: 'cac:IssuerParty', max: 1, classRef: IssuerParty },
   //                                   TODO CAC MISSING
   // resultOfVerification: { order: 17, attributeName: 'cac:ResultOfVerification', max: 1, classRef: null },
   //                                   TODO CAC MISSING
@@ -51,15 +51,15 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
  * @property {string} [issueTime] - The issue time of the component.
  * @property {UDTCode|string} [documentTypeCode] - The document type code of the component.
  * @property {string} [documentType] - The document type of the component.
- * @property {string} [xPath] - The x path of the component.
+ * @property {string[]} [xPath] - The x path of the component.
  * @property {string} [languageID] - The language id of the component.
  * @property {string} [localeCode] - The locale code of the component.
  * @property {string} [versionID] - The version id of the component.
  * @property {string} [documentStatusCode] - The document status code of the component.
- * @property {string} [documentDescription] - The document description of the component.
+ * @property {string[]} [documentDescription] - The document description of the component.
  * @property {string} [attachment] - The attachment of the component.
  * @property {string} [validityPeriod] - The validity period of the component.
- * @property {string} [issuerParty] - The issuer party of the component.
+ * @property {IssuerParty} [issuerParty] - The party who issued the referenced document.
  */
 interface AllowedParams {
   id: string;
@@ -77,7 +77,7 @@ interface AllowedParams {
   documentDescription?: string[];
   attachment?: string;
   validityPeriod?: string;
-  issuerParty?: string;
+  issuerParty?: IssuerParty;
 }
 
 class DespatchDocumentReference extends GenericAggregateComponent {
