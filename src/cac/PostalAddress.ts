@@ -68,12 +68,12 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   district: { order: 23, attributeName: 'cbc:District', max: 1, classRef: UdtText },
   timezoneOffset: { order: 24, attributeName: 'cbc:TimezoneOffset', max: 1, classRef: UdtText },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
-  streetName: { order: 7, attributeName: 'cbc:StreetName', max: 1, classRef: UdtText },
-  additionalStreetName: { order: 8, attributeName: 'cbc:AdditionalStreetName', max: 1, classRef: UdtText },
-  cityName: { order: 18, attributeName: 'cbc:CityName', max: 1, classRef: UdtText },
+  streetName: { order: 7, attributeName: 'cbc:StreetName', max: 1, classRef: UdtName },
+  additionalStreetName: { order: 8, attributeName: 'cbc:AdditionalStreetName', max: 1, classRef: UdtName },
+  cityName: { order: 18, attributeName: 'cbc:CityName', max: 1, classRef: UdtName },
   postalZone: { order: 19, attributeName: 'cbc:PostalZone', max: 1, classRef: UdtText },
   countrySubentity: { order: 20, attributeName: 'cbc:CountrySubentity', max: 1, classRef: UdtText },
-  countrySubentityCode: { order: 21, attributeName: 'cbc:CountrySubentityCode', max: 1, classRef: UdtText },
+  countrySubentityCode: { order: 21, attributeName: 'cbc:CountrySubentityCode', max: 1, classRef: UdtCode },
   addressLine: { order: 25, attributeName: 'cac:AddressLine', max: undefined, classRef: () => AddressLine },
   country: { order: 26, attributeName: 'cac:Country', max: 1, classRef: () => Country },
 };
@@ -116,17 +116,17 @@ interface AllowedParams {
   /* Seller address identifier. The identifier for an addressable group of properties according to the relevant postal service. Example value: 1 */
   id?: string | UdtIdentifier;
   /* Seller address line 1. The main address line in an address. Example value: Main Street 1 */
-  streetName?: string | UdtText;
+  streetName?: string | UdtName;
   /* Seller address line 2. An additional address line in an address that can be used to give further details supplementing the main line. Example value: Po Box 351 */
-  additionalStreetName?: string | UdtText;
+  additionalStreetName?: string | UdtName;
   /* 	Seller city. The common name of the city, town or village, where the Seller address is located. Example value: London */
-  cityName?: string | UdtText;
+  cityName?: string | UdtName;
   /* Seller post code. The identifier for an addressable group of properties according to the relevant postal service. Example value: W1G 8LZ */
   postalZone?: string | UdtText;
   /* Seller country subdivision. The subdivision of a country. Example value: Region A */
   countrySubentity?: string | UdtText;
   /* Seller country subdivision. The subdivision of a country. Example value: Region A */
-  countrySubentityCode?: string | UdtText;
+  countrySubentityCode?: string | UdtCode;
   /* Seller address line. The main address line in an address. Example value: Main Street 1 */
   addressLine?: AddressLine[];
   /* COUNTRY */

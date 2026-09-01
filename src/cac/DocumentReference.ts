@@ -29,7 +29,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     order: 13,
     attributeName: 'cbc:DocumentDescription',
     max: undefined,
-    classRef: UdtIdentifier,
+    classRef: UdtText,
   },
   attachment: { order: 14, attributeName: 'cac:Attachment', max: 1, classRef: () => Attachment },
   validityPeriod: { order: 15, attributeName: 'cac:ValidityPeriod', max: 1, classRef: () => ValidityPeriod },
@@ -74,7 +74,7 @@ interface AllowedParams {
   localeCode?: string;
   versionID?: string;
   documentStatusCode?: string;
-  documentDescription?: string[];
+  documentDescription?: (string | UdtText)[];
   attachment?: string;
   validityPeriod?: string;
   issuerParty?: IssuerParty;

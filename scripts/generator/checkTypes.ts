@@ -63,6 +63,17 @@ readdirSync(CAC_DIR)
       .filter((key) => !mapKeySet.has(key))
       .forEach((key) => problems.push(`${file}: '${key}' is declared in AllowedParams but not in the params map`));
 
+    // The constructor has to accept the type this file spent 130 lines
+    // declaring. PaymentTerms took `content: string`, so the only call the
+    // signature allowed threw "attribute 0 is not allowed" — GenericAggregate
+    // iterating the string's indices as keys — and every real use needed a
+    // cast. AllowedParams is the one right answer here, and it is one line.
+    for (const m of source.matchAll(/constructor\(content: (\w+)\)/g)) {
+      if (m[1] !== 'AllowedParams') {
+        problems.push(`${file}: constructor takes \`${m[1]}\`, not AllowedParams`);
+      }
+    }
+
     // Arity, which nothing compared until a regression slipped through every
     // other gate. A field typed as an array against `max: 1` type-checks and
     // then throws "array given and max is defined" at serialization — reachable
@@ -96,7 +107,7 @@ readdirSync(CAC_DIR)
 console.log(`checked ${checked} components`);
 if (problems.length) {
   problems.forEach((p) => console.log(`  ${p}`));
-  console.log(`\n${problems.length} field(s) disagree with the params map`);
+  console.log(`\n${problems.length} problem(s) — a params map, its declared type and its constructor must agree`);
   process.exitCode = 1;
 } else {
   console.log('params map and AllowedParams agree on every key, and arity agrees with max');

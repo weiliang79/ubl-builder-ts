@@ -55,7 +55,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     order: 6,
     attributeName: 'cbc:SettlementDiscountPercent',
     max: 1,
-    classRef: UdtCode,
+    classRef: UdtPercent,
   },
   penaltySurchargePercent: {
     order: 7,
@@ -108,7 +108,7 @@ type AllowedParams = {
   prepaidPaymentReferenceID?: string | UdtIdentifier;
   notes?: (string | UdtText)[];
   referenceEventCode?: string | UdtCode;
-  settlementDiscountPercent?: string | UdtCode;
+  settlementDiscountPercent?: string | UdtPercent;
   penaltySurchargePercent?: string | UdtPercent;
   paymentPercent?: string | UdtPercent;
   amount?: string | UdtAmount;
@@ -128,7 +128,7 @@ type AllowedParams = {
  *
  */
 class PaymentTermsType extends GenericAggregateComponent {
-  constructor(content: string) {
+  constructor(content: AllowedParams) {
     super(content, ParamsMap, 'cac:PaymentTermsType');
   }
 }

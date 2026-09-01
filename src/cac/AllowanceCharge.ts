@@ -52,7 +52,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     order: 5,
     attributeName: 'cbc:MultiplierFactorNumeric',
     max: 1,
-    classRef: UdtAmount,
+    classRef: UdtNumeric,
   },
   prepaidIndicator: { order: 6, attributeName: 'cbc:PrepaidIndicator', max: 1, classRef: UdtIndicator },
   sequenceNumeric: { order: 7, attributeName: 'cbc:SequenceNumeric', max: 1, classRef: UdtNumeric },
@@ -110,7 +110,7 @@ type AllowedParams = {
   /** The reason for this allowance or charge */
   allowanceChargeReason?: (string | UdtText)[];
   /** A number by which the base amount is multiplied to calculate the actual amount of this allowance or charge */
-  multiplierFactorNumeric?: string | UdtAmount;
+  multiplierFactorNumeric?: string | UdtNumeric;
 
   /*  */
   amount: string | UdtAmount;

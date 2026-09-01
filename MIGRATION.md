@@ -157,6 +157,52 @@ the constructor. `cac:IssuerParty` now works.
 new DespatchDocumentReference({ id: 'DN-1', issuerParty: new IssuerParty({ … }) });
 ```
 
+## Nine fields were wired to the wrong class
+
+A params-map entry's `classRef` decides what a raw value is wrapped in, and
+nothing compared it to the schema until now. `npm run check:classref` does.
+
+`Delivery.deliveryTerms` named `UdtDate` for `cac:DeliveryTerms`, an aggregate.
+The component was rebuilt as a date and serialised as an empty element, so the
+content was silently discarded:
+
+```xml
+<cac:Delivery><cac:DeliveryTerms></cac:DeliveryTerms></cac:Delivery>
+```
+
+It is `DeliveryTerms[]` now, and the children survive.
+
+The other eight named the wrong datatype, which kept the text but carried the
+wrong attribute set — so typed code with no casts in it could emit XML the XSD
+rejects. `AllowanceCharge.multiplierFactorNumeric` was `UdtAmount` against a
+NumericType, and an `UdtAmount` carries `currencyID`:
+
+```
+element MultiplierFactorNumeric: Schemas validity error :
+  attribute 'currencyID': The attribute 'currencyID' is not allowed.
+```
+
+| Component            | Field                       | Was             | Now                     |
+| -------------------- | --------------------------- | --------------- | ----------------------- |
+| `AllowanceCharge`    | `multiplierFactorNumeric`   | `UdtAmount`     | `UdtNumeric`            |
+| `DocumentReference`  | `documentDescription`       | `string[]`      | `(string \| UdtText)[]` |
+| `OrderLineReference` | `lineStatusCode`            | `UdtIdentifier` | `UdtCode`               |
+| `PaymentTerms`       | `settlementDiscountPercent` | `UdtCode`       | `UdtPercent`            |
+| `PostalAddress`      | `streetName`                | `UdtText`       | `UdtName`               |
+| `PostalAddress`      | `additionalStreetName`      | `UdtText`       | `UdtName`               |
+| `PostalAddress`      | `cityName`                  | `UdtText`       | `UdtName`               |
+| `PostalAddress`      | `countrySubentityCode`      | `UdtText`       | `UdtCode`               |
+
+Passing a plain string is unaffected — that is how most values arrive, and it
+was always wrapped correctly on the way out. Only code constructing the wrapper
+itself needs to change, and only where the old wrapper was the wrong one.
+
+## `PaymentTerms` takes its params, not a string
+
+`constructor(content: string)` meant the only call its signature allowed threw
+`attribute 0 is not allowed`, and every working call needed a cast. It takes
+`PaymentTermsTypeParams` now, like every other component.
+
 ## Not a breaking change
 
 193 fields that were declared required are now optional, because UBL marks them
