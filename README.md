@@ -96,12 +96,17 @@ rejects conformant documents.
 
 - **XAdES signing.** MyInvois document version 1.1 enables signature
   validation; this library ships the `finalize()` seam and no-ops for 1.0.
-  Signing is planned for 0.2.0. Version 1.0 needs no signature, and its
-  `documentHash` is a digest of opaque bytes that belongs in your API client.
+  Signing is planned, and becomes urgent when LHDN announces a deprecation date
+  for version 1.0 — none has been announced. Version 1.0 needs no signature,
+  and its `documentHash` is a digest of opaque bytes that belongs in your API
+  client.
 - **Profile constraints.** MyInvois requires fields UBL marks optional; the
   library does not yet enforce that, and LHDN rejects them on submission.
-- **65 UBL elements** remain untranscribed, blocked on component types that do
-  not exist yet. Everything absent is optional in UBL.
+- **23 UBL child elements** are not yet reachable: 19 need component types that
+  do not exist here yet, and 4 are self-referential — `cac:AgentParty` inside
+  `PartyType`, and similar — which the generator does not yet emit lazily. Run
+  `npm run generate:complete` for the current list. Everything absent is
+  optional in UBL.
 
 The library never computes or validates monetary totals — see the BR-CO-13
 note above for why.
