@@ -49,7 +49,12 @@ import { TaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
-  allowanceCharges: { order: 23, attributeName: 'cac:AllowanceCharge', max: undefined, classRef: AllowanceCharge },
+  allowanceCharges: {
+    order: 23,
+    attributeName: 'cac:AllowanceCharge',
+    max: undefined,
+    classRef: () => AllowanceCharge,
+  },
   subCreditNoteLines: {
     order: 27,
     attributeName: 'cac:SubCreditNoteLine',

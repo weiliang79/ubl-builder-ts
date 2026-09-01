@@ -16,7 +16,7 @@ import { DeliveryLocation } from './Location';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
-  allowanceCharge: { order: 7, attributeName: 'cac:AllowanceCharge', max: 1, classRef: AllowanceCharge },
+  allowanceCharge: { order: 7, attributeName: 'cac:AllowanceCharge', max: 1, classRef: () => AllowanceCharge },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   specialTerms: { order: 2, attributeName: 'cbc:SpecialTerms', max: undefined, classRef: UdtText },
   lossRiskResponsibilityCode: {

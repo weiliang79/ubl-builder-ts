@@ -14,9 +14,9 @@ import { Party, PartyParams } from './Party';
  */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
-  despatchContact: { order: 5, attributeName: 'cac:DespatchContact', max: 1, classRef: Contact },
-  accountingContact: { order: 6, attributeName: 'cac:AccountingContact', max: 1, classRef: Contact },
-  sellerContact: { order: 7, attributeName: 'cac:SellerContact', max: 1, classRef: Contact },
+  despatchContact: { order: 5, attributeName: 'cac:DespatchContact', max: 1, classRef: () => Contact },
+  accountingContact: { order: 6, attributeName: 'cac:AccountingContact', max: 1, classRef: () => Contact },
+  sellerContact: { order: 7, attributeName: 'cac:SellerContact', max: 1, classRef: () => Contact },
   customerAssignedAccountID: {
     order: 1,
     attributeName: 'cbc:CustomerAssignedAccountID',

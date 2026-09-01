@@ -55,14 +55,21 @@ readdirSync(CAC_DIR)
     // from ordinary typed code, and invisible to tsc, check:schema and the
     // suite. The mirror case only forces a needless cast, but both mean the
     // declared type contradicts the map beside it.
-    const maxOf = new Map(
-      [...mapBody.matchAll(/^\s{2}(\w+):\s*\{[\s\S]*?max:\s*(\d+|undefined)/gm)].map((m) => [m[1], m[2]]),
-    );
+    // Bounded to one entry. The obvious lazy `[\s\S]*?max:` is unbounded, so an
+    // entry that omits `max` — legal, since ParamsMapValues.max is optional —
+    // swallows the next entry's value and reports a false arity failure against
+    // the wrong field while skipping the right one.
+    const maxOf = new Map<string, string>();
+    for (const m of mapBody.matchAll(/^\s{2}(\w+):\s*\{((?:[^{}]|\{[^{}]*\})*)\}/gm)) {
+      maxOf.set(m[1], /max:\s*(\d+|undefined)/.exec(m[2])?.[1] ?? 'undefined');
+    }
     for (const m of body(source, params.index + params[0].length).matchAll(/^\s{2}(\w+)\??:\s*([^;]+);/gm)) {
       const [, key, declared] = m;
       const max = maxOf.get(key);
       if (max === undefined) continue;
-      const isArray = /\[\]$/.test(declared.trim());
+      // Any arm being an array is enough to pass one, so `string[] | UdtText`
+      // can throw against max: 1 even though the string ends in `UdtText`.
+      const isArray = declared.split('|').some((arm) => /\[\]$/.test(arm.trim()));
       const repeats = max === 'undefined';
       if (isArray === repeats) continue;
       problems.push(

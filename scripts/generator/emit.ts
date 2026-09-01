@@ -10,7 +10,7 @@ import { blankComments } from './source';
  * It rewrites the element name, minOccurs and maxOccurs of entries that
  * already exist, and leaves everything else — the classRef, the class body,
  * the exports — untouched. Adding the elements the fork never transcribed
- * needs import management and 18 component types that do not exist yet; that
+ * needs import management and 25 component types that do not exist yet; that
  * is a separate job.
  */
 
@@ -113,7 +113,7 @@ function bodyBounds(source: string, open: RegExp): { start: number; end: number 
  * These were transcribed by hand and drifted badly: 193 fields were declared
  * required where UBL says minOccurs="0". That is type-level only — assignContent
  * skips undefined — but it forces callers to pass elements they do not want,
- * and it made three of the four self-referential children unusable without a
+ * and it made three of the six self-referential children unusable without a
  * cast. Four fields drift the other way and are genuinely mandatory, so they
  * tighten: an AddressLine with no cbc:Line, or a TaxCategory with no
  * cac:TaxScheme, serialises to schema-invalid XML.
@@ -154,7 +154,9 @@ function alignOptionality(
     // max is defined"; typed as a scalar where the element repeats, passing
     // several needs a cast even though the runtime accepts them.
     let type = declared.trim();
-    const isArray = /\[\]$/.test(type);
+    // Any arm being an array is enough to pass one; reading only the tail
+    // classifies `string[] | UdtText` as a single value and leaves it unaligned.
+    const isArray = type.split('|').some((arm) => /\[\]$/.test(arm.trim()));
     if (isArray !== wanted.repeats) {
       changes.push(`${key}: ${isArray ? 'array -> single' : 'single -> array'}`);
       type = wanted.repeats

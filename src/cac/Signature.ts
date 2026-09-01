@@ -6,7 +6,7 @@ import { Party } from './Party';
 
 const ParamsMap = {
   signatureMethod: { order: 7, attributeName: 'cbc:SignatureMethod', max: 1, classRef: UdtText },
-  signatoryParty: { order: 8, attributeName: 'cac:SignatoryParty', max: 1, classRef: Party },
+  signatoryParty: { order: 8, attributeName: 'cac:SignatoryParty', max: 1, classRef: () => Party },
   name: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   notes: { order: 2, attributeName: 'cbc:Note', max: undefined, classRef: UdtText },
   validationDate: { order: 3, attributeName: 'cbc:ValidationDate', max: 1, classRef: UdtDate },

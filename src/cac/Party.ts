@@ -33,7 +33,7 @@ import { PostalAddress } from './PostalAddress';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
-  financialAccount: { order: 19, attributeName: 'cac:FinancialAccount', max: 1, classRef: PayeeFinancialAccount },
+  financialAccount: { order: 19, attributeName: 'cac:FinancialAccount', max: 1, classRef: () => PayeeFinancialAccount },
   agentParty: { order: 16, attributeName: 'cac:AgentParty', max: 1, classRef: () => Party },
   markCareIndicator: { order: 1, attributeName: 'cbc:MarkCareIndicator', max: 1, classRef: UdtIndicator },
   markAttentionIndicator: {

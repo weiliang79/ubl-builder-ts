@@ -174,8 +174,12 @@ function main(): void {
     const type = schemaTypeFor(basename(file, '.ts'), schema);
     if (!type) return;
 
-    const mapOpen = /const ParamsMap[^=]*=\s*\{/.exec(source);
-    const paramsOpen = /type AllowedParams\s*=\s*\{/.exec(source);
+    // Every search below runs on the blanked copy and every write on the real
+    // one. Blanking preserves length, so an offset found in `scan` addresses
+    // the same character in `source`.
+    let scan = blankComments(source);
+    const mapOpen = /const ParamsMap[^=]*=\s*\{/.exec(scan);
+    const paramsOpen = /type AllowedParams\s*=\s*\{/.exec(scan);
     if (!mapOpen || !paramsOpen) return;
 
     // Comment-stripped, for the same reason the fallback loop above is: a
@@ -183,10 +187,13 @@ function main(): void {
     // DebitNoteLine.ts each carry a commented `cac:SubInvoiceLine` /
     // `cac:SubDebitNoteLine`, which made this treat both as already present and
     // skip them — silently, since a skip for this reason is not even reported.
-    const live = blankComments(source);
-    const present = new Set([...live.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
-    const existingImports = importsOf(source);
-    const usedKeys = new Set([...source.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));
+    const present = new Set([...scan.matchAll(/attributeName:\s*'([^']*)'/g)].map((m) => m[1]));
+    // A commented-out import would otherwise make this think the symbol is
+    // already imported, and the generator would emit a classRef with no import.
+    const existingImports = importsOf(scan);
+    // A 2-space-indented `key: {` inside a block comment would otherwise add a
+    // phantom key and silently drop a real child.
+    const usedKeys = new Set([...scan.matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]));
 
     const additions: Addition[] = [];
     type.children.forEach((child) => {
@@ -230,7 +237,19 @@ function main(): void {
       if (usedKeys.has(key)) return; // a differently-named entry already covers it
       usedKeys.add(key);
 
-      additions.push({ key, child, classRef, from, tsType: repeats ? `${tsType}[]` : tsType, lazy: isSelfReferential });
+      // Lazy for component refs, eager for datatypes — which is exactly what
+      // the 495 existing entries do: 153 cac-to-cac refs are all `() => X`,
+      // and all 342 udt refs are bare. Components can form import cycles, and
+      // resolveClassRef exists because six BillingReference entries once
+      // captured undefined across one; datatypes are leaves and never can.
+      additions.push({
+        key,
+        child,
+        classRef,
+        from,
+        tsType: repeats ? `${tsType}[]` : tsType,
+        lazy: !child.type.startsWith('udt:'),
+      });
     });
 
     if (additions.length === 0) return;
@@ -251,7 +270,8 @@ function main(): void {
       mapOpen.index! + mapOpen[0].length,
     )}`;
 
-    const reopened = /type AllowedParams\s*=\s*\{/.exec(source)!;
+    scan = blankComments(source);
+    const reopened = /type AllowedParams\s*=\s*\{/.exec(scan)!;
     source = `${source.slice(0, reopened.index! + reopened[0].length)}\n${paramFields}${source.slice(
       reopened.index! + reopened[0].length,
     )}`;
@@ -263,10 +283,17 @@ function main(): void {
       .forEach((a) => byModule.set(a.from!, [...(byModule.get(a.from!) ?? []), a.classRef]));
     byModule.forEach((symbols, module) => {
       const unique = [...new Set(symbols)].sort();
-      const existing = new RegExp(`import \\{([^}]+)\\} from '${module.replace('.', '\\.')}';`).exec(source);
+      scan = blankComments(source);
+      const existing = new RegExp(`import \\{([^}]+)\\} from '${module.replace('.', '\\.')}';`).exec(scan);
       if (existing) {
         const merged = [...new Set([...existing[1].split(',').map((s) => s.trim()), ...unique])].filter(Boolean).sort();
-        source = source.replace(existing[0], `import { ${merged.join(', ')} } from '${module}';`);
+        // Spliced by offset, not string-replaced: an identical import line
+        // inside an earlier comment would otherwise be rewritten instead.
+        const at = existing.index as number;
+        source =
+          source.slice(0, at) +
+          `import { ${merged.join(', ')} } from '${module}';` +
+          source.slice(at + existing[0].length);
       } else {
         source = `import { ${unique.join(', ')} } from '${module}';\n${source}`;
       }
