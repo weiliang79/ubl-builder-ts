@@ -10,7 +10,13 @@ on:
     branches: [ "main" ]
   # Lets publish.yml run this exact gate before it releases, so there is one
   # definition of "green" rather than a copy that drifts.
-  workflow_call:
+  #
+  # `{}` rather than nothing: GitHub accepts a bare `workflow_call:` and reads
+  # the null as "no inputs, secrets or outputs", but the JSON schema editors
+  # validate against types it as an object, so the bare form is flagged in the
+  # editor while working perfectly in CI. An empty object says the same thing
+  # to both.
+  workflow_call: {}
 
 jobs:
   build:
