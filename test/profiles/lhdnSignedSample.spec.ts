@@ -1,5 +1,7 @@
+import { spawnSync } from 'node:child_process';
 import { createHash, createVerify, X509Certificate } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ParsedElement, parseXml } from '../../src/core/parse';
 import { toXmlString } from '../../src/core/serialize';
@@ -70,31 +72,70 @@ describe("LHDN's published signed sample", () => {
   const root = toNode(parseXml(readFileSync(SAMPLE, 'utf8')));
   const canonicalDocument = toXmlString(applyTransform(root), { canonical: true });
 
-  const digestValues: string[] = [];
-  (function collect(node: XmlNode) {
-    if (local(node.name) === 'DigestValue') digestValues.push(textOf(node));
-    (node.children ?? []).forEach(collect);
-  })(root);
+  /**
+   * The published digest a given Reference carries, located structurally.
+   *
+   * By URI rather than by position: `[0]`, `[1]`, `[2]` over every DigestValue
+   * in the document happens to be right here, but it encodes reading order
+   * rather than meaning, and silently picks a different value if the document
+   * ever gains an element.
+   */
+  const referenceDigest = (uri: string): string => {
+    const reference = (find(root, 'SignedInfo')?.children ?? []).find(
+      // `URI` must be PRESENT and equal — not defaulted. An absent URI and
+      // `URI=""` are different claims in XMLDSig, which is the distinction the
+      // serializer had to be fixed for; a lookup that conflates them would
+      // undercut the branch it is testing.
+      (child) =>
+        local(child.name) === 'Reference' &&
+        child.attributes?.URI !== undefined &&
+        String(child.attributes.URI) === uri,
+    );
+    if (!reference) throw new Error(`no ds:Reference with URI="${uri}" in the sample`);
+    return textOf(find(reference, 'DigestValue'));
+  };
+  const documentDigest = referenceDigest('');
+  const propertiesDigest = referenceDigest('#id-xades-signed-props');
+  const certificateDigest = textOf(find(find(root, 'CertDigest') as XmlNode, 'DigestValue'));
 
   it('reproduces the DocDigest LHDN published', () => {
     // Canonicalization AND the transform, measured end to end against a value
     // this project did not compute. Before this, the strongest claim available
     // was "agrees with libxml2", which says nothing about whether the right
     // bytes were fed to it.
-    expect(sha256(canonicalDocument)).toBe(digestValues[0]);
+    expect(sha256(canonicalDocument)).toBe(documentDigest);
   });
 
   it('shows the document is canonicalized non-exclusively, whatever the sample says about itself', () => {
     // The sample declares Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"
-    // on both its CanonicalizationMethod and its third Transform. That is
-    // wrong about its own content: exclusive c14n yields a different digest,
-    // and the published value is the non-exclusive one. LHDN's documentation
-    // and klsheng's implementation both say c14n11; the sample's attribute is
-    // the outlier. Do not "fix" canonical.ts toward exclusive c14n.
-    const declared = textOf(find(root, 'CanonicalizationMethod'));
+    // on both its CanonicalizationMethod and its third Transform, and is wrong
+    // about its own content — the published digest is the NON-exclusive one.
+    //
+    // Demonstrated rather than asserted: this canonicalizes our c14n11 output
+    // again, exclusively, via libxml2. Exclusive c14n drops in-scope namespace
+    // declarations nothing uses — which after the transform is exactly
+    // xmlns:ext — so the bytes and the digest must differ. An earlier draft of
+    // this test named the claim without computing it, and would have passed
+    // even if the two algorithms agreed.
     expect(find(root, 'CanonicalizationMethod')?.attributes?.Algorithm).toBe('http://www.w3.org/2001/10/xml-exc-c14n#');
-    expect(declared).toBe('');
-    expect(sha256(canonicalDocument)).toBe(digestValues[0]);
+
+    if (spawnSync('xmllint', ['--version']).error) {
+      console.warn('xmllint not installed — skipping the exclusive-c14n comparison');
+      return;
+    }
+
+    const file = join(tmpdir(), `ubl-c14n-${process.pid}.xml`);
+    writeFileSync(file, canonicalDocument);
+    try {
+      const exclusive = spawnSync('xmllint', ['--exc-c14n', file], { encoding: 'utf8' });
+      expect(exclusive.status).toBe(0);
+      expect(exclusive.stdout).not.toBe(canonicalDocument);
+      expect(sha256(exclusive.stdout)).not.toBe(documentDigest);
+      // …while ours does match, so the difference is decided, not merely noted.
+      expect(sha256(canonicalDocument)).toBe(documentDigest);
+    } finally {
+      unlinkSync(file);
+    }
   });
 
   it('confirms the signature covers the document, not ds:SignedInfo', () => {
@@ -110,7 +151,7 @@ describe("LHDN's published signed sample", () => {
 
   it('derives CertDigest as SHA-256 over the DER of the embedded certificate', () => {
     const der = Buffer.from(textOf(find(root, 'X509Certificate')), 'base64');
-    expect(createHash('sha256').update(der).digest('base64')).toBe(digestValues[2]);
+    expect(createHash('sha256').update(der).digest('base64')).toBe(certificateDigest);
   });
 
   it('renders X509IssuerName in RFC 4514 order — the reverse of OpenSSL', () => {
@@ -160,7 +201,7 @@ describe("LHDN's published signed sample", () => {
       children: (node.children ?? []).map(bare),
     });
 
-    expect(sha256(toXmlString(bare(properties), { canonical: true }))).not.toBe(digestValues[1]);
-    expect(digestValues[1]).toBe('Tc9oNX8EuNQohWVDZeaPOHmeBU5tuwVdwIRyfltnTPw=');
+    expect(sha256(toXmlString(bare(properties), { canonical: true }))).not.toBe(propertiesDigest);
+    expect(propertiesDigest).toBe('Tc9oNX8EuNQohWVDZeaPOHmeBU5tuwVdwIRyfltnTPw=');
   });
 });
