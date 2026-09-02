@@ -12,7 +12,14 @@ export default defineConfig(
   eslintConfigPrettier,
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      // Off, not warned. `any` is load-bearing here rather than lazy: the
+      // params-map interpreter in core/GenericAggregateComponent takes a
+      // classRef it cannot name and content it cannot describe, and the
+      // datatypes/xsd validators exist precisely to accept an unknown value and
+      // decide whether it is legal. Twenty-six warnings that will never be
+      // acted on train the eye to skip lint output, which is worse than the
+      // rule being absent.
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
