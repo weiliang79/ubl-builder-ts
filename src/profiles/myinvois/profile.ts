@@ -1,5 +1,18 @@
 import { Invoice } from '../../documents';
 import { Profile } from '../Profile';
+import { SigningOptions, signInvoice } from './sign';
+
+/**
+ * MyInvois adds one member to {@link Profile}.
+ *
+ * A plain `Profile` has nowhere to carry a key or a certificate — `finalize`
+ * takes only the document, which is what keeps the interface stable for
+ * profiles that derive nothing. `withSigner` returns a configured profile
+ * instead of widening that signature for everyone.
+ */
+export interface MyInvoisProfile extends Profile {
+  withSigner(options: SigningOptions): Profile;
+}
 
 /**
  * Malaysia — LHDN MyInvois.
@@ -50,13 +63,35 @@ export const myInvois = {
   /**
    * A no-op at document version 1.0, which LHDN accepts unsigned.
    *
-   * Version 1.1 enables signature validation and needs XAdES: canonicalise
-   * with xml-c14n11 excluding UBLExtensions and Signature, digest with
-   * SHA-256, sign with a certificate from an MCMC-approved Malaysian CA, and
-   * assemble the result into the standard UBL signature extension. That is
-   * tracked for 0.2.0.
+   * Version 1.1 enables signature validation and needs XAdES. Reach for
+   * {@link MyInvoisProfile.withSigner} for that: signing needs a key and a
+   * certificate, which `Profile` deliberately has nowhere to put.
    */
   finalize(_document: Invoice): void {
     return;
   },
-} satisfies Profile;
+
+  /**
+   * A profile that signs, for document version 1.1.
+   *
+   * ```ts
+   * const signing = myInvois.withSigner({ sign, certificate });
+   * signing.defaults(invoice);
+   * // …build the invoice…
+   * await signing.finalize(invoice);
+   * ```
+   *
+   * `finalize` bumps `listVersionID` to 1.1, declares the signature
+   * namespaces, and attaches the XAdES signature — in that order, because the
+   * digest covers the finished document. See `sign.ts`.
+   */
+  withSigner(options: SigningOptions): Profile {
+    return {
+      id: 'myinvois@1.1',
+      defaults: myInvois.defaults,
+      finalize: async (document: Invoice): Promise<void> => {
+        await signInvoice(document, options);
+      },
+    };
+  },
+} satisfies MyInvoisProfile;

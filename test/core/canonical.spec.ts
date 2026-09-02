@@ -90,9 +90,7 @@ describe('Canonical XML 1.1', () => {
         children: [{ name: 'cbc:ID', value: 'INV-1' }],
       };
 
-      expect(canonical(node)).toBe(
-        '<Invoice xmlns:cbc="urn:cbc" xmlns:ext="urn:ext"><cbc:ID>INV-1</cbc:ID></Invoice>',
-      );
+      expect(canonical(node)).toBe('<Invoice xmlns:cbc="urn:cbc" xmlns:ext="urn:ext"><cbc:ID>INV-1</cbc:ID></Invoice>');
     });
   });
 
@@ -121,18 +119,24 @@ describe('Canonical XML 1.1', () => {
   });
 
   describe('agreement with the ordinary writer', () => {
-    it('drops the same falsy attributes the XML writer drops', () => {
-      // LHDN canonicalizes the document it RECEIVES. An attribute the normal
-      // writer omits but the canonical form includes would give a DocDigest
-      // that cannot be reproduced from the submitted bytes.
+    it('keeps and drops exactly the attributes the XML writer does', () => {
+      // LHDN canonicalizes the document it RECEIVES, so the two writers must
+      // agree on which attributes exist. They share `keepAttribute` for that.
+      //
+      // An empty value is KEPT: XMLDSig's first ds:Reference carries `URI=""`,
+      // meaning "this whole document", which is not the same as omitting the
+      // attribute. The blanket truthiness test that used to live here dropped
+      // it silently, and would have dropped a legitimate `0` too.
       const node: XmlNode = {
         name: 'cbc:ID',
         value: 'X',
-        attributes: { schemeID: '', keep: 'yes' },
+        attributes: { schemeID: '', zero: 0, no: false, keep: 'yes' },
       };
 
-      expect(canonical(node)).toBe('<cbc:ID keep="yes">X</cbc:ID>');
-      expect(toXmlString(node, { headless: true })).toBe('<cbc:ID keep="yes">X</cbc:ID>');
+      const expected = '<cbc:ID schemeID="" zero="0" no="false" keep="yes">X</cbc:ID>';
+      expect(toXmlString(node, { headless: true })).toBe(expected);
+      // Canonical form differs only in attribute order, which it sorts.
+      expect(canonical(node)).toBe('<cbc:ID keep="yes" no="false" schemeID="" zero="0">X</cbc:ID>');
     });
 
     it('leaves ordinary serialisation untouched', () => {

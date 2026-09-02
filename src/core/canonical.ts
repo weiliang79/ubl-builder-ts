@@ -1,4 +1,4 @@
-import { XmlAttributes, XmlNode } from './xmlNode';
+import { keepAttribute, XmlAttributes, XmlNode } from './xmlNode';
 
 /**
  * Canonical XML 1.1 — https://www.w3.org/TR/xml-c14n11/
@@ -12,7 +12,7 @@ import { XmlAttributes, XmlNode } from './xmlNode';
  *
  * ## Why this is written here rather than taken from a library
  *
- * Node has no canonicalizer, and the ones on npm are Node-only. `dian/shas.ts`
+ * Node has no canonicalizer, and the ones on npm are Node-only. `signing/digest.ts`
  * deliberately reaches for Web Crypto so this package still runs in a browser;
  * pulling in a DOM-based C14N implementation would undo that for the sake of
  * one traversal. We already own the node tree, so we can write the canonical
@@ -112,7 +112,7 @@ function localOf(name: string): string {
  */
 function present(attributes: XmlAttributes): Array<[string, string]> {
   return Object.entries(attributes)
-    .filter(([, value]) => value)
+    .filter(([, value]) => keepAttribute(value))
     .map(([name, value]): [string, string] => [name, String(value)]);
 }
 

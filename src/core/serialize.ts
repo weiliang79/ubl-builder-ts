@@ -1,6 +1,6 @@
 import { create } from 'xmlbuilder2';
 import { toCanonicalXml } from './canonical';
-import { XmlContent, XmlNode } from './xmlNode';
+import { keepAttribute, XmlContent, XmlNode } from './xmlNode';
 
 /**
  * The only place that knows a serialization dialect.
@@ -41,7 +41,7 @@ export function toXmlObject(content: XmlContent): Record<string, unknown> {
   }
 
   Object.entries(content.attributes ?? {})
-    .filter(([, value]) => value)
+    .filter(([, value]) => keepAttribute(value))
     .forEach(([name, value]) => {
       out[`@${name}`] = value;
     });
