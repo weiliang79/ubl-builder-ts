@@ -71,6 +71,10 @@ invoice.setDueDate('2026-08-01');
 console.log(invoice.getXml(false, true));
 ```
 
+One caveat for hashing: an empty element written `<x></x>` is re-serialised as
+`<x/>`, so a `documentHash` taken over a re-serialised third-party document may
+not match the sender's. Hash the bytes you received.
+
 An element this library cannot represent throws rather than being dropped —
 32 UBL children still have no component class, and losing one in transit is
 worse than refusing the document. The UBL JSON form carries only the four

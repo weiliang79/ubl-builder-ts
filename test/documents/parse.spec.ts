@@ -133,6 +133,21 @@ describe('reading a document back', () => {
     expect(signed).toContain('<a:Outer xmlns:a="urn:a" flag="1"><a:Inner deep="2">text</a:Inner></a:Outer>');
   });
 
+  it('normalises an empty element to the self-closing form', () => {
+    // The one way a round trip is not byte-identical, and it is the
+    // serializer's doing rather than the reader's: every empty element this
+    // library writes is self-closing, whether it was built or parsed. A
+    // document that arrives using <x></x> comes back as <x/> — equivalent XML,
+    // different bytes, which matters when a hash is computed over them.
+    const expanded =
+      '<Invoice xmlns:cbc="urn:c" xmlns:cac="urn:a"><cbc:ID>INV-1</cbc:ID>' +
+      '<cac:AccountingSupplierParty><cac:Party></cac:Party></cac:AccountingSupplierParty></Invoice>';
+
+    expect(Invoice.fromXml(expanded).getXml(false, true)).toBe(
+      expanded.replace('<cac:Party></cac:Party>', '<cac:Party/>'),
+    );
+  });
+
   it('rejects a document with no single root', () => {
     expect(() => Invoice.fromJson({ _D: 'urn:x' })).toThrow(/exactly one root element/);
   });

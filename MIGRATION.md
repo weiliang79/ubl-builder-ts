@@ -104,6 +104,13 @@ An element that has no place in the document, or one appearing more often than
 UBL allows, throws rather than being dropped: losing a value in transit is
 worse than refusing the document.
 
+One difference is not preserved: an empty element written `<x></x>` comes back
+as `<x/>`. That is the serializer, not the reader — every empty element this
+library writes is self-closing, however the document was built. The XML is
+equivalent but the bytes are not, so a `documentHash` computed over a
+re-serialised third-party invoice may differ from the sender's. Hash the bytes
+you received.
+
 `ext:ExtensionContent` is the exception, and deliberately. It is `xsd:any` in
 the schema — arbitrary XML, and where MyInvois 1.1 puts the XAdES signature —
 so there is nothing to build a component from. The subtree is carried through
