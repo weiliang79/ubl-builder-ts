@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { CAC_DIR, camel, learnByType, local, pluralize, schemaTypeFor, udtClass } from './components';
 import { loadSchema, Schema, SchemaChild } from './schema';
@@ -16,7 +16,14 @@ import { blankComments, bodyBounds } from './source';
  *
  * Everything here is derived from the schema, so the three gates check it the
  * same way they check the files that were written by hand.
+ *
+ * Re-running is a no-op: a type that has a class is not missing. Pass --force
+ * to rewrite the files this script wrote, which is how a change here reaches
+ * them; files written by hand are never touched either way.
  */
+
+/** The marker that says a file came from here, and may be rewritten. */
+const GENERATED_BY = 'npm run scaffold';
 
 interface Emitted {
   type: string;
@@ -184,9 +191,25 @@ function main(): void {
     if (type) present.add(`cac:${type.name}`);
   });
 
-  const missing = closureOf(schema, present);
+  // --force rewrites the files this script wrote before, which is how a fix to
+  // the generator reaches them: a type that already has a class is not missing,
+  // so without it the only way to pick up a change was to delete 58 files by
+  // hand. It rewrites nothing that was written by hand.
+  const force = process.argv.includes('--force');
+  const rewritable = force
+    ? [...present].filter((type) => {
+        const file = join(CAC_DIR, `${classNameFor(type)}.ts`);
+        return existsSync(file) && readFileSync(file, 'utf8').includes(GENERATED_BY);
+      })
+    : [];
+
+  const missing = [...closureOf(schema, present), ...rewritable].sort();
   if (!missing.length) {
-    console.log('every schema type reachable from a component has a class');
+    console.log(
+      force
+        ? 'no generated files to rewrite, and no schema type is missing a class'
+        : 'every schema type reachable from a component has a class',
+    );
     return;
   }
 
