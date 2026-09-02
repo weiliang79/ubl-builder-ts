@@ -1,7 +1,7 @@
 {
   "name": "@weiliang79/ubl-builder",
   "version": "0.2.0",
-  "description": "Build OASIS UBL 2.1 documents as XML or UBL JSON, with country profiles — Malaysia MyInvois included",
+  "description": "Build OASIS UBL 2.1 documents as XML or UBL JSON, with country profiles \u2014 Malaysia MyInvois included",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -50,11 +50,12 @@
   "scripts": {
     "test": "jest --config jest.config.ts",
     "validate:xsd": "bash scripts/validate-fixtures.sh",
+    "check:c14n": "bash scripts/check-canonical.sh",
     "build": "tsc --project tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "prepublishOnly": "npm run build && npm run lint && npm run typecheck && npm run check:schema && npm run check:types && npm run check:classref && npm test && npm run validate:xsd",
+    "prepublishOnly": "npm run build && npm run lint && npm run typecheck && npm run check:schema && npm run check:types && npm run check:classref && npm run check:c14n && npm test && npm run validate:xsd",
     "preversion": "npm run lint",
     "version": "npm run format && git add -A src",
     "postversion": "git push --follow-tags",
