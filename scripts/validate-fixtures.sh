@@ -17,6 +17,12 @@ if ! command -v xmllint >/dev/null 2>&1; then
   exit 1
 fi
 
+# Top level only. test/fixtures/lhdn/ holds third-party reference documents,
+# not this library's output, and LHDN's own signed sample fails here for a
+# reason that is xmllint's rather than the document's: a 39-digit certificate
+# serial is a legal xs:integer, but libxml2 rejects anything past a machine
+# integer. Real X.509 serials are routinely 128-bit, so this gate cannot check
+# a genuinely signed document at all — see test/profiles/lhdnSignedSample.spec.ts.
 status=0
 shopt -s nullglob
 for f in "$FIXTURES"/*.xml; do
