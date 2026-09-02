@@ -134,7 +134,11 @@ export function toJsonObject(content: XmlContent): Record<string, unknown> {
   }
 
   Object.entries(content.attributes ?? {})
-    .filter(([name, value]) => value && !(name in XMLNS_TO_KEY))
+    // The same predicate the XML writer uses. They must agree on which
+    // attributes exist: the two renderings are the same document, and a
+    // document that reports `URI=""` as XML and omits it as JSON describes
+    // itself differently depending on which one you submit.
+    .filter(([name, value]) => keepAttribute(value) && !(name in XMLNS_TO_KEY))
     .forEach(([name, value]) => {
       out[name] = value;
     });

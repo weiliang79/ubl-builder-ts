@@ -67,7 +67,6 @@ describe('MyInvois XAdES signing', () => {
     base64: 'TUlJRkFLRQ==',
     issuerName: 'CN=Test CA, E=ca@example.my, OU=Certification, O=Example Sdn Bhd, C=MY',
     serialNumber: '1234567890',
-    der: new Uint8Array([1, 2, 3, 4, 5]),
   };
 
   const signOne = async () => {
@@ -194,6 +193,30 @@ describe('MyInvois XAdES signing', () => {
     const reference = (find(emitted, 'ds:SignedInfo')?.children ?? []).find((c) => c.name === 'ds:Reference');
 
     expect(reference?.attributes?.URI).toBe('');
+  });
+
+  it('derives CertDigest from the certificate it embeds', async () => {
+    // ds:X509Certificate carries base64 of the DER and xades:CertDigest is
+    // SHA-256 over those same bytes, so there is only ever one certificate in
+    // play. An earlier draft took the DER as a separate option, which let the
+    // embedded certificate and its digest describe two different ones.
+    const { emitted } = await signOne();
+    const expected = await sha256.getHash(certificate.base64, 'base64', 'base64');
+
+    expect(textOf(find(emitted, 'ds:X509Certificate'))).toBe(certificate.base64);
+    expect(textOf(find(find(emitted, 'xades:CertDigest') as XmlNode, 'ds:DigestValue'))).toBe(expected);
+  });
+
+  it('refuses to sign an already-signed document rather than signing twice', async () => {
+    // setUBLExtensions replaces but addSignature appends, so a second call
+    // used to leave one extension against two cac:Signature elements — and UBL
+    // allows cac:Signature [0..*], so it still validated.
+    const { invoice } = await signOne();
+
+    await expect(signInvoice(invoice, { sign: rsaSigner(privateKey), certificate })).rejects.toThrow(
+      /already carries a signature/,
+    );
+    expect((invoice.getXml(false, true).match(/<cac:Signature>/g) ?? []).length).toBe(1);
   });
 
   it('refuses to sign a document with no InvoiceTypeCode', async () => {

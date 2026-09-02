@@ -79,8 +79,16 @@ export interface SigningOptions {
    * or a cloud KMS. It is also why {@link signInvoice} is async.
    */
   sign: Signer;
-  /** Identifies the signing certificate. See {@link CertificateParams}. */
-  certificate: Omit<CertificateParams, 'digest'> & { digest?: string; der?: Uint8Array };
+  /**
+   * Identifies the signing certificate. See {@link CertificateParams}.
+   *
+   * `digest` is optional and computed from `base64` when absent. It is the
+   * same certificate either way: `ds:X509Certificate` carries base64 of the
+   * DER, and `xades:CertDigest` is SHA-256 over those same DER bytes. Passing
+   * the bytes separately would only create a way for the embedded certificate
+   * and its digest to describe two different certificates.
+   */
+  certificate: Omit<CertificateParams, 'digest'> & { digest?: string };
   /** Overrides `new Date()`, so a test can assert exact bytes. */
   signingTime?: Date;
 }
@@ -134,13 +142,38 @@ function invoiceTypeCode(node: XmlNode): { value: string; attributes: Record<str
  * is left exactly as the caller built it. The returned string is what the
  * DocDigest was computed over — useful for a test, and for anyone reproducing
  * a rejection.
+ *
+ * ## Submit the compact rendering — `getXml()`, never `getXml(true)`
+ *
+ * LHDN recanonicalizes the document it receives to check the DocDigest, and a
+ * standard canonicalizer treats indentation between elements as content: the
+ * same document pretty-printed and compact canonicalize to different bytes
+ * (verified against libxml2 — 44 bytes against 37 on a two-element sample).
+ * This library's node tree holds no inter-element whitespace, so the digest is
+ * over the compact form. Pretty-print a signed document for submission and
+ * LHDN computes a different digest and rejects it, while the document remains
+ * perfectly schema-valid.
+ *
+ * `getXml()` defaults to compact, so this only bites someone who asks for
+ * pretty output. Print it for a human by all means — just do not submit it.
  */
 export async function signInvoice(invoice: Invoice, options: SigningOptions): Promise<string> {
   // Step 0 — everything that changes the document, BEFORE anything is
   // digested. Done here rather than left to the caller: a bump afterwards
   // gives LHDN a different digest, and the only symptom is a rejected
   // signature on a document that validates perfectly.
-  const current = invoiceTypeCode(invoice.toNode());
+  const root = invoice.toNode();
+
+  // Signing twice is a mistake, not a request for a second signature.
+  // `setUBLExtensions` replaces but `addSignature` appends, so a second call
+  // left one extension against two `cac:Signature` elements — a malformed
+  // document that still validates, since UBL allows `cac:Signature` [0..*].
+  // Rebuild the document instead; a signature covers one exact set of bytes.
+  if ((root.children ?? []).some((child) => child.name === 'cac:Signature' || child.name === 'ext:UBLExtensions')) {
+    throw new Error('this invoice already carries a signature or UBLExtensions: build a fresh document to sign again');
+  }
+
+  const current = invoiceTypeCode(root);
   if (!current) {
     throw new Error('cbc:InvoiceTypeCode must be set before signing: MyInvois carries the document version there');
   }
@@ -155,21 +188,16 @@ export async function signInvoice(invoice: Invoice, options: SigningOptions): Pr
   const signatureValue = toBase64(await options.sign(new TextEncoder().encode(signed)));
 
   // Steps 5-6 — the certificate's own digest, then the properties that carry it.
-  const { der, digest, ...certificate } = options.certificate;
-  if (!digest && !der) {
-    throw new Error('certificate needs either `digest` (base64 SHA-256 of the DER bytes) or `der` to compute it from');
-  }
+  // `base64` is the DER, so the digest comes from the very bytes the document
+  // embeds; there is no second copy to disagree with it.
+  const { digest, ...certificate } = options.certificate;
   const certificateParams: CertificateParams = {
     ...certificate,
-    digest: digest ?? (await sha256.getHash(toBase64(der as Uint8Array), 'base64', 'base64')),
+    digest: digest ?? (await sha256.getHash(certificate.base64, 'base64', 'base64')),
   };
 
   const properties = qualifyingProperties(certificateParams, (options.signingTime ?? new Date()).toISOString());
-  const propertiesDigest = await sha256.getHash(
-    toXmlString({ ...properties, name: properties.name }, { canonical: true }),
-    'utf8',
-    'base64',
-  );
+  const propertiesDigest = await sha256.getHash(toXmlString(properties, { canonical: true }), 'utf8', 'base64');
 
   // Step 7 — assemble, and attach to the document.
   const signature = buildSignature({
