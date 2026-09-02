@@ -2,12 +2,18 @@ import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '..
 import { UdtIndicator, UdtName, UdtQuantity, UdtText } from '../datatypes/udt';
 import { UdtNumeric } from '../datatypes/udt/UdtNumeric';
 import { OriginAddress } from './Address';
+import { Certificate } from './Certificate';
 import { CommodityClassification } from './CommodityClassification';
 import { Country } from './Country';
+import { Dimension } from './Dimension';
 import { DocumentReference } from './DocumentReference';
+import { HazardousItem } from './HazardousItem';
+import { ItemInstance } from './ItemInstance';
+import { AdditionalItemProperty } from './ItemProperty';
 import { Party } from './Party';
 import { SellersItemIdentification } from './SellersItemIdentification';
 import { ClassifiedTaxCategory } from './TaxCategory';
+import { TransactionConditions } from './TransactionConditions';
 
 /*
     1   cbc:Description [0..*]    Text describing this item.
@@ -45,6 +51,22 @@ import { ClassifiedTaxCategory } from './TaxCategory';
 // ##################################  TODO CAC MISSING ################################################
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  transactionConditionses: {
+    order: 21,
+    attributeName: 'cac:TransactionConditions',
+    max: undefined,
+    classRef: () => TransactionConditions,
+  },
+  hazardousItems: { order: 22, attributeName: 'cac:HazardousItem', max: undefined, classRef: () => HazardousItem },
+  additionalItemProperties: {
+    order: 24,
+    attributeName: 'cac:AdditionalItemProperty',
+    max: undefined,
+    classRef: () => AdditionalItemProperty,
+  },
+  itemInstances: { order: 28, attributeName: 'cac:ItemInstance', max: undefined, classRef: () => ItemInstance },
+  certificates: { order: 29, attributeName: 'cac:Certificate', max: undefined, classRef: () => Certificate },
+  dimensions: { order: 30, attributeName: 'cac:Dimension', max: undefined, classRef: () => Dimension },
   descriptions: { order: 1, attributeName: 'cbc:Description', max: undefined, classRef: UdtText },
   packQuantity: { order: 2, attributeName: 'cbc:PackQuantity', max: 1, classRef: UdtQuantity },
   packSizeNumeric: { order: 3, attributeName: 'cbc:PackSizeNumeric', max: 1, classRef: UdtNumeric },
@@ -154,6 +176,18 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 
 // ##################################  TODO CAC MISSING ################################################
 type AllowedParams = {
+  /** A set of sales conditions applying to this item. */
+  transactionConditionses?: TransactionConditions[];
+  /** Information pertaining to this item as a hazardous item. */
+  hazardousItems?: HazardousItem[];
+  /** An additional property of this item. */
+  additionalItemProperties?: AdditionalItemProperty[];
+  /** A trackable, unique instantiation of this item. */
+  itemInstances?: ItemInstance[];
+  /** A certificate associated with this item. */
+  certificates?: Certificate[];
+  /** One of the measurable dimensions (length, mass, weight, or volume) of this item. */
+  dimensions?: Dimension[];
   /** Identifying information for this item, assigned by the buyer. */
   buyersItemIdentification?: SellersItemIdentification;
   /** Identifying information for this item, assigned by the manufacturer. */

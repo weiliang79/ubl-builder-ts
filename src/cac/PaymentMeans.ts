@@ -1,6 +1,10 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtCode, UdtDate, UdtIdentifier, UdtText } from '../datatypes/udt';
+import { CardAccount } from './CardAccount';
+import { CreditAccount } from './CreditAccount';
 import { PayeeFinancialAccount } from './PayeeFinancialAccount';
+import { PaymentMandate } from './PaymentMandate';
+import { TradeFinancing } from './TradeFinancing';
 
 /*
   1  cbc:ID [0..1]    An identifier for this means of payment.
@@ -19,6 +23,10 @@ import { PayeeFinancialAccount } from './PayeeFinancialAccount';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  cardAccount: { order: 8, attributeName: 'cac:CardAccount', max: 1, classRef: () => CardAccount },
+  creditAccount: { order: 11, attributeName: 'cac:CreditAccount', max: 1, classRef: () => CreditAccount },
+  paymentMandate: { order: 12, attributeName: 'cac:PaymentMandate', max: 1, classRef: () => PaymentMandate },
+  tradeFinancing: { order: 13, attributeName: 'cac:TradeFinancing', max: 1, classRef: () => TradeFinancing },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   paymentMeansCode: { order: 2, attributeName: 'cbc:PaymentMeansCode', max: 1, classRef: UdtCode },
   paymentDueDate: { order: 3, attributeName: 'cbc:PaymentDueDate', max: 1, classRef: UdtDate },
@@ -42,6 +50,14 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A credit card, debit card, or charge card account that constitutes this means of payment. */
+  cardAccount?: CardAccount;
+  /** A credit account associated with this means of payment. */
+  creditAccount?: CreditAccount;
+  /** The payment mandate associated with this means of payment. */
+  paymentMandate?: PaymentMandate;
+  /** A trade finance agreement applicable to this means of payment. */
+  tradeFinancing?: TradeFinancing;
   /** The payer's financial account. */
   payerFinancialAccount?: PayeeFinancialAccount;
   id?: string | UdtIdentifier;

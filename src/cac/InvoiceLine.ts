@@ -16,6 +16,7 @@ import { Party } from './Party';
 import { PaymentTerms } from './PaymentTerms';
 import { PeriodType } from './Period';
 import { Price } from './Price';
+import { PricingReference } from './PricingReference';
 import { TaxTotal, WithholdingTaxTotal } from './TaxTotal';
 
 /*
@@ -51,6 +52,7 @@ import { TaxTotal, WithholdingTaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  pricingReference: { order: 17, attributeName: 'cac:PricingReference', max: 1, classRef: () => PricingReference },
   subInvoiceLines: { order: 27, attributeName: 'cac:SubInvoiceLine', max: undefined, classRef: () => InvoiceLine },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   uuid: { order: 2, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
@@ -127,6 +129,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A reference to pricing and item location information associated with this invoice line. */
+  pricingReference?: PricingReference;
   /** An invoice line subsidiary to this invoice line. */
   subInvoiceLines?: InvoiceLine[];
   id: string | UdtIdentifier;

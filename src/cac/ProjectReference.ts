@@ -2,6 +2,7 @@
 
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtDate, UdtIdentifier } from '../datatypes/udt';
+import { WorkPhaseReference } from './WorkPhaseReference';
 
 // const GenericAggregateComponent = require("./GenericAggregateComponent");
 
@@ -10,6 +11,12 @@ import { UdtDate, UdtIdentifier } from '../datatypes/udt';
 // /* TODO GANERIC CLASSES */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  workPhaseReferences: {
+    order: 4,
+    attributeName: 'cac:WorkPhaseReference',
+    max: undefined,
+    classRef: () => WorkPhaseReference,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   uuid: { order: 2, attributeName: 'cbc:UUID', max: 1, classRef: UdtIdentifier },
   issueDate: { order: 3, attributeName: 'cbc:IssueDate', max: 1, classRef: UdtDate },
@@ -20,6 +27,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A specific phase of work in the referenced project. */
+  workPhaseReferences?: WorkPhaseReference[];
   /** An identifier for the referenced project. */
   id: string | UdtIdentifier;
   /** A universally unique identifier for the referenced project */

@@ -14,6 +14,8 @@ import { Party } from './Party';
 import { PaymentTerms } from './PaymentTerms';
 import { PeriodType } from './Period';
 import { Price } from './Price';
+import { PricingReference } from './PricingReference';
+import { DiscrepancyResponse } from './Response';
 import { TaxTotal } from './TaxTotal';
 
 /*
@@ -49,6 +51,13 @@ import { TaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  discrepancyResponses: {
+    order: 13,
+    attributeName: 'cac:DiscrepancyResponse',
+    max: undefined,
+    classRef: () => DiscrepancyResponse,
+  },
+  pricingReference: { order: 18, attributeName: 'cac:PricingReference', max: 1, classRef: () => PricingReference },
   allowanceCharges: {
     order: 23,
     attributeName: 'cac:AllowanceCharge',
@@ -125,11 +134,14 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     max: 1,
     classRef: () => ItemPriceExtension,
   },
-  // DiscrepancyResponses: { order: 13,  attributeName: 'cac:DiscrepancyResponse', max: undefined, classRef: null },
   // PricingReference: { order: 18,  attributeName: 'cac:PricingReference', max: 1, classRef: PricingReference },
 };
 
 type AllowedParams = {
+  /** A reason for the credit. */
+  discrepancyResponses?: DiscrepancyResponse[];
+  /** A reference to pricing and item location information associated with this credit note line. */
+  pricingReference?: PricingReference;
   /** An allowance or charge associated with this credit note. */
   allowanceCharges?: AllowanceCharge[];
   /** A class defining one or more Credit Note Lines detailing the credit note line. */
@@ -148,7 +160,6 @@ type AllowedParams = {
   freeOfChargeIndicator?: string | UdtIndicator;
   invoicePeriods?: PeriodType[];
   orderLineReferences?: OrderLineReference[];
-  // DiscrepancyResponses: ,
   despatchLineReferences?: DespatchLineReference[];
   receiptLineReferences?: ReceiptLineReference[];
   billingReferences?: BillingReference[];

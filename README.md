@@ -5,8 +5,9 @@
 Build XML documents to the OASIS **UBL 2.1** (Universal Business Language)
 standard, with optional country profiles layered on top.
 
-- **UBL 2.1 documents** — components are held to the OASIS schemas by a CI
-  check that fails on any disagreement in element name, order or cardinality
+- **Every UBL 2.1 aggregate component** — all 109, held to the OASIS schemas by
+  CI checks that fail on any disagreement in element name, sequence position,
+  cardinality or the class a value is built into
 - **XML or JSON** — the same document renders as XML or as OASIS UBL JSON
   v2.0, the format Malaysia's MyInvois accepts alongside XML
 - **Country profiles** — the core knows only UBL; jurisdictions add their
@@ -98,6 +99,7 @@ of truth for every component's structure. They are development-only and are
 not published.
 
 ```sh
+npm run scaffold          # write a component file for a schema type that has none
 npm run report:schema     # differences between the components and the schemas
 npm run check:schema      # fail if any params map disagrees (runs in CI)
 npm run check:types       # fail if a component disagrees with its params map, or is unexported
@@ -121,10 +123,6 @@ rejects conformant documents.
   client.
 - **Profile constraints.** MyInvois requires fields UBL marks optional; the
   library does not yet enforce that, and LHDN rejects them on submission.
-- **31 UBL child elements** are not yet reachable, each needing one of 26
-  component types that do not exist here yet. Run `npm run generate:complete`
-  for the current list, or `npm run report:schema` — the two agree. Everything
-  absent is optional in UBL.
 
 The library never computes or validates monetary totals — see the BR-CO-13
 note above for why.

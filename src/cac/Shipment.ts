@@ -3,9 +3,13 @@ import { UdtCode, UdtIdentifier, UdtIndicator, UdtMeasure, UdtQuantity, UdtText 
 import { UdtAmount } from '../datatypes/udt/UdtAmount';
 import { OriginAddress, ReturnAddress } from './Address';
 import { AllowanceCharge } from './AllowanceCharge';
+import { Consignment } from './Consignment';
 import { Country } from './Country';
 import { Delivery } from './Delivery';
+import { GoodsItem } from './GoodsItem';
 import { AlternativeDeliveryLocation } from './Location';
+import { ShipmentStage } from './ShipmentStage';
+import { TransportHandlingUnit } from './TransportHandlingUnit';
 
 /*
 
@@ -45,6 +49,15 @@ import { AlternativeDeliveryLocation } from './Location';
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  consignments: { order: 22, attributeName: 'cac:Consignment', max: undefined, classRef: () => Consignment },
+  goodsItems: { order: 23, attributeName: 'cac:GoodsItem', max: undefined, classRef: () => GoodsItem },
+  shipmentStages: { order: 24, attributeName: 'cac:ShipmentStage', max: undefined, classRef: () => ShipmentStage },
+  transportHandlingUnits: {
+    order: 26,
+    attributeName: 'cac:TransportHandlingUnit',
+    max: undefined,
+    classRef: () => TransportHandlingUnit,
+  },
   id: { order: 1, attributeName: 'cbc:ID', max: 1, classRef: UdtIdentifier },
   shippingPriorityLevelCode: {
     order: 2,
@@ -158,6 +171,14 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** A consignment covering this shipment. */
+  consignments?: Consignment[];
+  /** A goods item included in this shipment. */
+  goodsItems?: GoodsItem[];
+  /** A stage in the transport movement of this shipment. */
+  shipmentStages?: ShipmentStage[];
+  /** A transport handling unit associated with this shipment. */
+  transportHandlingUnits?: TransportHandlingUnit[];
   /** The delivery of this shipment. */
   delivery?: Delivery;
   /** The address to which a shipment should be returned. */

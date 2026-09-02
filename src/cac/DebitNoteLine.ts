@@ -10,6 +10,8 @@ import { DocumentReference } from './DocumentReference';
 import { Item } from './Item';
 import { DespatchLineReference, ReceiptLineReference } from './LineReference';
 import { Price } from './Price';
+import { PricingReference } from './PricingReference';
+import { DiscrepancyResponse } from './Response';
 import { TaxTotal } from './TaxTotal';
 
 /*
@@ -38,6 +40,13 @@ import { TaxTotal } from './TaxTotal';
 
 // ##################################  TODO CAC MISSING ################################################
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  discrepancyResponses: {
+    order: 10,
+    attributeName: 'cac:DiscrepancyResponse',
+    max: undefined,
+    classRef: () => DiscrepancyResponse,
+  },
+  pricingReference: { order: 15, attributeName: 'cac:PricingReference', max: 1, classRef: () => PricingReference },
   subDebitNoteLines: {
     order: 21,
     attributeName: 'cac:SubDebitNoteLine',
@@ -87,11 +96,13 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   },
   item: { order: 19, attributeName: 'cac:Item', max: 1, classRef: () => Item },
   price: { order: 20, attributeName: 'cac:Price', max: 1, classRef: () => Price },
-  // discrepancyResponses: { order: 10,  attributeName: 'cac:DiscrepancyResponse', max: undefined, classRef: undefined },
-  // pricingReference: { order: 15,  attributeName: 'cac:PricingReference', max: 1, classRef: undefined },
 };
 
 type AllowedParams = {
+  /** A reason for the debit. */
+  discrepancyResponses?: DiscrepancyResponse[];
+  /** A reference to pricing and item location information associated with this debit note line. */
+  pricingReference?: PricingReference;
   /** A recursive description of a debit note line subsidiary to this debit note line. */
   subDebitNoteLines?: DebitNoteLineType[];
   /** An allowance or charge associated with this debit note. */

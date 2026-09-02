@@ -1,6 +1,7 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
 import { UdtCode, UdtIdentifier, UdtName, UdtText } from '../datatypes/udt';
 import { Address } from './Address';
+import { LocationCoordinate } from './LocationCoordinate';
 import { ValidityPeriod } from './Period';
 
 /*http://www.datypic.com/sc/ubl21/e-cac_PhysicalLocation.html
@@ -19,6 +20,12 @@ cac:LocationCoordinate [0..*]    The geographical coordinates of this location.
 */
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
+  locationCoordinates: {
+    order: 12,
+    attributeName: 'cac:LocationCoordinate',
+    max: undefined,
+    classRef: () => LocationCoordinate,
+  },
   subsidiaryLocations: {
     order: 11,
     attributeName: 'cac:SubsidiaryLocation',
@@ -50,6 +57,8 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
 };
 
 type AllowedParams = {
+  /** The geographical coordinates of this location. */
+  locationCoordinates?: LocationCoordinate[];
   /** A location subsidiary to this location. */
   subsidiaryLocations?: LocationType[];
   id?: string | UdtIdentifier;

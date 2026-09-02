@@ -15,7 +15,20 @@ import { blankComments } from './source';
 export const CAC_DIR = join(__dirname, '..', '..', 'src', 'cac');
 
 export const local = (name: string) => name.trim().split(':').pop() as string;
-export const camel = (name: string) => name.charAt(0).toLowerCase() + name.slice(1);
+/**
+ * `ChildConsignment` -> `childConsignment`, and `ID` -> `id`.
+ *
+ * A leading run of capitals is an acronym and lowercases whole — every
+ * hand-written component keys cbc:ID as `id`, and naive camelCasing produced
+ * `iD` across 58 generated files. The last capital of the run stays when a
+ * lowercase letter follows it, so `UNDGCode` becomes `undgCode` rather than
+ * `undgcode`.
+ */
+export const camel = (name: string): string => {
+  const acronym = /^([A-Z]+)(?=[A-Z][a-z]|$)/.exec(name);
+  if (acronym) return acronym[1].toLowerCase() + name.slice(acronym[1].length);
+  return name.charAt(0).toLowerCase() + name.slice(1);
+};
 
 /** Match the dominant convention: repeating elements get a plural key. */
 export function pluralize(word: string): string {
