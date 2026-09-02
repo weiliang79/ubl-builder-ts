@@ -389,3 +389,74 @@ If you used `PostalAddress` rather than `Address`, seventeen more children of
 `markCare`, `plotIdentification`, `citySubdivisionName`, `region`, `district`,
 `timezoneOffset`, `addressTypeCode` and `addressFormatCode`. `Address` already
 had them; the two classes are now the same one.
+
+# Migrating to 0.3.0
+
+Additive. Nothing was removed from the public API and no import path moved, so
+an application on 0.2.0 compiles unchanged.
+
+## What's new
+
+### XAdES signing for MyInvois document version 1.1
+
+`myInvois.withSigner({ sign, certificate })` returns a configured profile whose
+`finalize()` bumps `listVersionID` to 1.1 and attaches the signature. The
+`Profile` interface is unchanged — `finalize` still takes only a document —
+because signing needs a key and a certificate, which a plain profile has
+nowhere to put.
+
+The private key never enters this library: `sign` is a callback, so a file, a
+smartcard, an HSM or a cloud KMS all work. `certificate.issuerName` is supplied
+rather than parsed, because the order of the relative names is not canonical
+and differs between CAs.
+
+Version 1.0 continues to work exactly as before, and remains the default.
+
+### Canonical XML 1.1
+
+`toXmlString(node, { canonical: true })` emits the form a signature is computed
+over. Ordinary output is untouched — the same document still serialises to the
+same bytes. Verified against libxml2 by the new `check:c14n` gate, and against
+LHDN's own published signed document.
+
+### `sig:` and `sac:` components
+
+`@weiliang79/ubl-builder/sig` adds `UBLDocumentSignatures`,
+`SignatureInformation` and `SignatureExtensionContent`. OASIS ships these
+schemas as part of UBL 2.1; they had simply never been modelled here.
+
+## What changed in the output
+
+### Empty attributes are no longer dropped
+
+One behaviour change, and the only reason this is 0.3.0 rather than 0.2.1.
+
+`toXmlObject` and `toJsonObject` used to filter attributes on truthiness, so an
+attribute set to the empty string vanished — as did a legitimate `0` or
+`false`. Both writers now drop only `undefined` and `null`.
+
+This matters because XMLDSig's first `ds:Reference` carries `URI=""`, which
+means "this whole document" and is _not_ the same claim as omitting the
+attribute. The old behaviour silently swallowed it.
+
+**Who is affected:** only code that deliberately sets an attribute to `''`,
+`0` or `false`. Such an attribute now appears in the output, which changes the
+document's bytes and therefore its `documentHash`. No fixture in this repo
+changed, and the golden MyInvois invoice still serialises to the same 4542
+bytes.
+
+## Fixed, and needing no action
+
+### A component that described an element UBL does not have
+
+`src/ext/SignatureExtensions.ts` declared `cac:SignatureExtensions`, which
+appears nowhere in the UBL 2.1 schemas, with an empty params map. It was
+exported from no barrel and imported by nothing. Removed, and replaced by the
+real thing in `sig/SignatureExtensionContent`.
+
+### Signing digests moved out of the Colombian profile
+
+`profiles/dian/shas.ts` became `signing/digest.ts`. It was always a generic
+Web Crypto helper rather than anything Colombian, and core signing importing
+from a country profile would have been backwards. It was not exported from any
+barrel, so no import path changes.

@@ -92,6 +92,7 @@ The root import re-exports everything. Subpaths are narrower:
 | `.../cac`                 | aggregate components — `Party`, `TaxTotal`, `InvoiceLine`, …       |
 | `.../datatypes`           | `UdtAmount`, `UdtCode`, `UBLVersionID`, the CCT and XSD primitives |
 | `.../ext`                 | `UBLExtension`, `UBLExtensions`                                    |
+| `.../sig`                 | `UBLDocumentSignatures`, `SignatureInformation`                    |
 | `.../profiles/myinvois`   | Malaysia — LHDN vocabulary and profile                             |
 | `.../profiles/dian`       | Colombia — retained, unmaintained                                  |
 | `.../core`                | the component base, serializers and node types                     |
@@ -109,6 +110,7 @@ npm run check:schema      # fail if any params map disagrees (runs in CI)
 npm run check:types       # fail if a component disagrees with its params map, or is unexported
 npm run check:classref    # fail if a classRef is not the class implementing that element's type
 npm run validate:xsd      # validate the golden fixtures against the XSD
+npm run check:c14n        # fail if our Canonical XML 1.1 disagrees with libxml2
 ```
 
 Validation is structural only — element sequence, names, cardinality,
@@ -117,14 +119,46 @@ reporting line-level discounts in `AllowanceTotalAmount` while
 `LineExtensionAmount` is already net of them, so business-rule validation
 rejects conformant documents.
 
+## Signing — MyInvois document version 1.1
+
+Version 1.0 is accepted unsigned. Version 1.1 enables signature validation and
+needs an XAdES-BES signature, which `withSigner` attaches:
+
+```ts
+import { myInvois } from '@weiliang79/ubl-builder/profiles/myinvois';
+
+const signing = myInvois.withSigner({
+  sign: (bytes) => myHsm.sign(bytes), // RSA-SHA256 over the bytes given
+  certificate: { base64, issuerName, serialNumber },
+});
+
+signing.defaults(invoice);
+// …build the invoice…
+await signing.finalize(invoice); // bumps listVersionID to 1.1, then signs
+```
+
+The private key never enters this library — `sign` is a callback, so a file, a
+smartcard, an HSM or a cloud KMS all work, and the package still runs in a
+browser. `issuerName` is supplied rather than parsed because the order of the
+relative names is not canonical and differs between CAs; LHDN wants RFC 4514
+order, which is the reverse of OpenSSL's rendering.
+
+Submit the compact rendering — `getXml()`, never `getXml(true)`. LHDN
+recanonicalizes what it receives, and a standard canonicalizer counts
+indentation between elements as content.
+
+Three of the four values in the signature reproduce LHDN's own published signed
+reference document exactly; see `test/profiles/lhdnSignedSample.spec.ts` for
+what is proven and what is not. **No submission has yet been accepted**, so
+treat 1.1 as unverified against the live service.
+
+Signing needs a certificate from an
+[MCMC-licensed CA](https://www.mcmc.gov.my/en/sectors/digital-signature/list-of-licensees)
+— an organisational one, and self-signed certificates are rejected in the
+sandbox as well as in production.
+
 ## Not implemented
 
-- **XAdES signing.** MyInvois document version 1.1 enables signature
-  validation; this library ships the `finalize()` seam and no-ops for 1.0.
-  Signing is planned, and becomes urgent when LHDN announces a deprecation date
-  for version 1.0 — none has been announced. Version 1.0 needs no signature,
-  and its `documentHash` is a digest of opaque bytes that belongs in your API
-  client.
 - **Profile constraints.** MyInvois requires fields UBL marks optional; the
   library does not yet enforce that, and LHDN rejects them on submission.
 

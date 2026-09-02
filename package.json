@@ -1,6 +1,6 @@
 {
   "name": "@weiliang79/ubl-builder",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Build OASIS UBL 2.1 documents as XML or UBL JSON, with country profiles \u2014 Malaysia MyInvois included",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
