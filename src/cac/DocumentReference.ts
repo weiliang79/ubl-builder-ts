@@ -41,7 +41,6 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   attachment: { order: 14, attributeName: 'cac:Attachment', max: 1, classRef: () => Attachment },
   validityPeriod: { order: 15, attributeName: 'cac:ValidityPeriod', max: 1, classRef: () => ValidityPeriod },
   //                                   TODO CAC MISSING
-  // resultOfVerification: { order: 17, attributeName: 'cac:ResultOfVerification', max: 1, classRef: null },
   //                                   TODO CAC MISSING
 };
 

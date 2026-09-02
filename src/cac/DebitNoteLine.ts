@@ -96,8 +96,6 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
   },
   item: { order: 19, attributeName: 'cac:Item', max: 1, classRef: () => Item },
   price: { order: 20, attributeName: 'cac:Price', max: 1, classRef: () => Price },
-  // discrepancyResponses: { order: 10,  attributeName: 'cac:DiscrepancyResponse', max: undefined, classRef: undefined },
-  // pricingReference: { order: 15,  attributeName: 'cac:PricingReference', max: 1, classRef: undefined },
 };
 
 type AllowedParams = {

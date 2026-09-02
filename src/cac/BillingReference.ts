@@ -1,4 +1,5 @@
 import GenericAggregateComponent, { IGenericKeyValue, ParamsMapValues } from '../core/GenericAggregateComponent';
+import { BillingReferenceLine } from './BillingReferenceLine';
 import { AdditionalDocumentReference, DocumentReference, InvoiceDocumentReference } from './DocumentReference';
 
 const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
@@ -48,7 +49,7 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     order: 8,
     attributeName: 'cac:BillingReferenceLine',
     max: undefined,
-    classRef: null /* cac:BillingReferenceLineType has no component class yet */,
+    classRef: () => BillingReferenceLine,
   },
 };
 
@@ -74,15 +75,13 @@ type AllowedParams = {
   /** A reference to an additional document */
   additionalDocumentReference?: AdditionalDocumentReference;
 
-  // /** A reference to a billing document */
-  // billingReferenceLine: null;
-
   selfBilledInvoiceDocumentReference?: DocumentReference;
   creditNoteDocumentReference?: DocumentReference;
   selfBilledCreditNoteDocumentReference?: DocumentReference;
   debitNoteDocumentReference?: DocumentReference;
   reminderDocumentReference?: DocumentReference;
-  billingReferenceLine?: null[];
+  /** A line in a billing document. */
+  billingReferenceLine?: BillingReferenceLine[];
 };
 
 /**

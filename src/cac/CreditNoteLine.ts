@@ -134,7 +134,6 @@ const ParamsMap: IGenericKeyValue<ParamsMapValues> = {
     max: 1,
     classRef: () => ItemPriceExtension,
   },
-  // DiscrepancyResponses: { order: 13,  attributeName: 'cac:DiscrepancyResponse', max: undefined, classRef: null },
   // PricingReference: { order: 18,  attributeName: 'cac:PricingReference', max: 1, classRef: PricingReference },
 };
 
@@ -161,7 +160,6 @@ type AllowedParams = {
   freeOfChargeIndicator?: string | UdtIndicator;
   invoicePeriods?: PeriodType[];
   orderLineReferences?: OrderLineReference[];
-  // DiscrepancyResponses: ,
   despatchLineReferences?: DespatchLineReference[];
   receiptLineReferences?: ReceiptLineReference[];
   billingReferences?: BillingReference[];
