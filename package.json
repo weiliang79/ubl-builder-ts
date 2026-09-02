@@ -29,6 +29,10 @@
       "types": "./dist/ext/index.d.ts",
       "default": "./dist/ext/index.js"
     },
+    "./sig": {
+      "types": "./dist/sig/index.d.ts",
+      "default": "./dist/sig/index.js"
+    },
     "./profiles/myinvois": {
       "types": "./dist/profiles/myinvois/index.d.ts",
       "default": "./dist/profiles/myinvois/index.js"
