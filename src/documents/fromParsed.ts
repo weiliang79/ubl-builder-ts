@@ -1,5 +1,6 @@
 import GenericAggregateComponent, { IGenericKeyValue, resolveClassRef } from '../core/GenericAggregateComponent';
 import { localName, ParsedElement } from '../core/parse';
+import { RawContent } from '../core/rawContent';
 
 /**
  * Turn a parsed element into the params object its component constructor takes.
@@ -51,12 +52,15 @@ function isComponent(classRef: unknown): boolean {
  * because a document of any size asks the same question repeatedly.
  */
 const mapCache = new Map<unknown, IGenericKeyValue<ChildEntry>>();
-function paramsMapOf(classRef: unknown): IGenericKeyValue<ChildEntry> {
+function paramsMapOf(classRef: unknown): IGenericKeyValue<ChildEntry> | null {
   const cached = mapCache.get(classRef);
   if (cached) return cached;
 
   const probe = new (classRef as Constructor)({}) as GenericAggregateComponent;
-  const map = probe.getParamsMap();
+  // AnyExtensionContent takes its map from whoever constructs it, because
+  // ext:ExtensionContent is xsd:any and has no schema to derive one from.
+  const map = probe.getParamsMap() as IGenericKeyValue<ChildEntry> | undefined;
+  if (!map) return null;
   mapCache.set(classRef, map);
   return map;
 }
@@ -77,7 +81,10 @@ function buildValue(element: ParsedElement, entry: ChildEntry, path: string, pro
   const classRef = resolveClassRef(entry.classRef) as Constructor;
 
   if (isComponent(classRef)) {
-    return new classRef(paramsFrom(element, paramsMapOf(classRef), path, problems));
+    const map = paramsMapOf(classRef);
+    // No params map means the element is opaque by design, not that something
+    // went wrong: it is carried through as the nodes it was read as.
+    return map ? new classRef(paramsFrom(element, map, path, problems)) : new RawContent(element);
   }
   return new classRef(element.value ?? '', element.attributes);
 }

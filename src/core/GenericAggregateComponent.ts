@@ -1,3 +1,4 @@
+import { RawContent } from './rawContent';
 import { toXmlObject, toXmlString } from './serialize';
 import { NodeSource, XmlContent, XmlNode } from './xmlNode';
 
@@ -146,6 +147,14 @@ export default class GenericAggregateComponent {
 
   private buildClassInstance(AbstractClass: any, rawValue: any) {
     if (rawValue instanceof AbstractClass) {
+      return rawValue;
+    }
+
+    // Opaque content passes through as-is. ext:ExtensionContent is xsd:any, so
+    // AnyExtensionContent takes its params map from whoever constructs it and
+    // a reader has none to give — rebuilding a RawContent as one produced an
+    // empty <ext:ExtensionContent/> and lost the signature inside it.
+    if (rawValue instanceof RawContent) {
       return rawValue;
     }
 

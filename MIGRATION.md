@@ -100,9 +100,15 @@ Both rebuild the document from the same tables that write one, so what comes
 out renders as what went in: the golden XML fixture round-trips byte for byte,
 and the JSON fixture renders to the same XML.
 
-An element this library cannot represent, or one appearing more often than UBL
-allows, throws rather than being dropped — 31 UBL children still have no
-component class, and losing one in transit is worse than refusing the document.
+An element that has no place in the document, or one appearing more often than
+UBL allows, throws rather than being dropped: losing a value in transit is
+worse than refusing the document.
+
+`ext:ExtensionContent` is the exception, and deliberately. It is `xsd:any` in
+the schema — arbitrary XML, and where MyInvois 1.1 puts the XAdES signature —
+so there is nothing to build a component from. The subtree is carried through
+as the nodes it was read as, which is what lets a signed invoice render back
+byte for byte.
 
 The UBL JSON form carries only the four namespaces it hoists to `_D` / `_A` /
 `_B` / `_E`, so a document that reaches you as JSON has any others it once had
