@@ -26,9 +26,14 @@ if ! command -v xmllint >/dev/null 2>&1; then
   exit 1
 fi
 
+# Includes test/fixtures/lhdn/, which validate-fixtures.sh deliberately skips:
+# LHDN's own signed sample cannot pass xmllint's XSD check, because its
+# certificate serial is a 39-digit xs:integer and libxml2 caps that type at a
+# machine integer. Canonicalization has no such limit, and agreeing with
+# libxml2 on a real signed document is worth more than agreeing on ours alone.
 status=0
 shopt -s nullglob
-for f in "$FIXTURES"/*.xml; do
+for f in "$FIXTURES"/*.xml "$FIXTURES"/lhdn/*.xml; do
   name="$(basename "$f")"
   submitted="$WORK/submitted.xml"
   ours="$WORK/ours.c14n"
