@@ -128,15 +128,29 @@ jobs:
           DIST_TAG: ${{ steps.disttag.outputs.tag }}
         run: |
           set -euo pipefail
+
+          # Notes written by hand when the release warrants them, generated from
+          # the commit log when it does not. A file under .github/release-notes
+          # named for the tag wins, so the notes are reviewable in the pull
+          # request that raises them rather than appearing only after publish.
+          notes_file=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes_file" ]; then
+            notes=(--notes-file "$notes_file")
+            echo "Using $notes_file"
+          else
+            notes=(--generate-notes)
+            echo "No $notes_file; generating notes from the commit log"
+          fi
+
           # --verify-tag refuses to invent a tag if the ref somehow went missing.
           # A prerelease is marked as one so it does not show as the latest
           # release, mirroring what --tag next does on the registry side.
           if [ "$DIST_TAG" = "next" ]; then
             gh release create "$GITHUB_REF_NAME" \
-              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag --prerelease
+              --title "$GITHUB_REF_NAME" "${notes[@]}" --verify-tag --prerelease
           else
             gh release create "$GITHUB_REF_NAME" \
-              --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+              --title "$GITHUB_REF_NAME" "${notes[@]}" --verify-tag
           fi
 
       - name: Summary
