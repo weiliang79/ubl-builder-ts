@@ -126,25 +126,33 @@ describe("LHDN's published signed sample", () => {
   });
 
   it("does not reproduce the sample's PropsDigest — an open question, not a passing test", () => {
-    // Documented rather than hidden. Sixteen candidate inputs were tried:
-    // QualifyingProperties and SignedProperties, bare, with xmlns:xades, with
-    // both namespaces, under c14n11 and exclusive c14n, pretty and compact,
-    // plus every literal element span in the file under five normalisations.
-    // None produce the published value.
+    // Documented rather than hidden, and the search behind it was exhaustive.
     //
-    // The element choice is not the problem. LHDN's signed JSON sample digests
-    // `QualifyingProperties` — the Target wrapper — and that value reproduces
-    // exactly, while the bare `SignedProperties` does not. So the wrapper is
-    // right and the XML *serialisation* of it is what remains unknown.
+    // Candidate inputs tried: QualifyingProperties and SignedProperties, each
+    // bare, with xmlns:xades, with xmlns:ds, and with both in either order;
+    // under c14n11 and exclusive c14n; pretty and compact; with self-closing
+    // tags left, tightened and expanded; and with whitespace treated four ways
+    // including klsheng's "linearize" (strip \n \t \r only, leaving space
+    // indentation). Then, to stop guessing: every substring of the file that
+    // starts at a `<` and ends after a `>` between 300 and 4000 bytes long,
+    // under three normalisations — 133,467 of them. Nothing matches.
     //
-    // Note what is NOT at stake: in this scheme SignatureValue signs the
-    // document, so nothing cryptographically binds this digest. A stale value
-    // in the sample would still verify — which is one explanation for why the
-    // other three reproduce and this one does not.
+    // So this digest is not derivable from the published bytes at all, which
+    // is a different finding from "we compute it wrong". The other three
+    // values reproduce exactly; this one reproduces from nothing.
     //
-    // The implementation follows klsheng, which is in production. This test
-    // asserts the mismatch so that a future change which happens to fix it
-    // fails loudly and gets investigated, instead of passing unnoticed.
+    // Note what is NOT at stake: SignatureValue signs the document, not
+    // ds:SignedInfo, so nothing cryptographically binds this digest. A stale
+    // value here would never have been caught — and the sample is already
+    // demonstrably wrong about its own canonicalization algorithm.
+    //
+    // The element choice is separately evidenced: LHDN's signed JSON sample
+    // digests QualifyingProperties, the Target wrapper, and that value
+    // reproduces exactly while bare SignedProperties does not.
+    //
+    // DS320 is the one signal that could still overturn this — see
+    // `digestedProperties` in profiles/myinvois/sign.ts. This test asserts the
+    // mismatch so that a change which happens to fix it fails loudly.
     const properties = find(root, 'QualifyingProperties') as XmlNode;
     const bare = (node: XmlNode): XmlNode => ({
       ...node,

@@ -1,3 +1,4 @@
+import { ParsedElement } from '../../core/parse';
 import { RawContent } from '../../core/rawContent';
 import { toXmlString } from '../../core/serialize';
 import { XmlNode } from '../../core/xmlNode';
@@ -125,6 +126,42 @@ function withoutSignatureElements(node: XmlNode): XmlNode {
   return prune(node);
 }
 
+/**
+ * The element the second `ds:Reference` digests.
+ *
+ * `xades:QualifyingProperties` — the wrapper carrying `Target` — rendered with
+ * no namespace declarations of its own. Two independent grounds for that
+ * choice: klsheng canonicalizes it under a synthetic root and then removes the
+ * root textually, which leaves exactly this; and LHDN's signed *JSON* sample
+ * digests the same wrapper, reproducing its published value exactly where the
+ * bare `SignedProperties` does not.
+ *
+ * ## If a submission ever returns DS320, change this function
+ *
+ * DS320 is "signed properties digest value doesn't match", and its official
+ * wording names "the signed properties section **where ID is
+ * id-xades-signed-props**" — which is `xades:SignedProperties`, one level in
+ * from what this digests. That wording is the one piece of evidence pointing
+ * the other way, so the alternative is `properties.children[0]` here and
+ * nothing else changes.
+ *
+ * The wording is not enough to act on now: klsheng digests the wrapper and is
+ * in production, and the JSON sample agrees with klsheng. DS320 would settle
+ * it in one submission.
+ *
+ * LHDN's published XML sample cannot arbitrate. Its PropsDigest reproduces
+ * from nothing: 133,467 substrings of that file, under three whitespace
+ * normalisations, produce no match — nor do QualifyingProperties or
+ * SignedProperties under any combination of namespace declarations,
+ * canonicalization algorithm and self-closing style. Since `SignatureValue`
+ * signs the document rather than `ds:SignedInfo`, nothing binds that digest,
+ * so a stale value there would never have been noticed. See
+ * `test/profiles/lhdnSignedSample.spec.ts`.
+ */
+function digestedProperties(properties: ParsedElement): ParsedElement {
+  return properties;
+}
+
 /** Read `cbc:InvoiceTypeCode` back off the document so it can be re-set. */
 function invoiceTypeCode(node: XmlNode): { value: string; attributes: Record<string, string> } | null {
   const found = (node.children ?? []).find((child) => child.name === 'cbc:InvoiceTypeCode');
@@ -197,7 +234,11 @@ export async function signInvoice(invoice: Invoice, options: SigningOptions): Pr
   };
 
   const properties = qualifyingProperties(certificateParams, (options.signingTime ?? new Date()).toISOString());
-  const propertiesDigest = await sha256.getHash(toXmlString(properties, { canonical: true }), 'utf8', 'base64');
+  const propertiesDigest = await sha256.getHash(
+    toXmlString(digestedProperties(properties), { canonical: true }),
+    'utf8',
+    'base64',
+  );
 
   // Step 7 — assemble, and attach to the document.
   const signature = buildSignature({
