@@ -97,6 +97,57 @@ describe('reading a document back', () => {
     expect(Invoice.fromXml(withExtensions).getXml(false, true)).toBe(withExtensions);
   });
 
+  it('carries a signature extension through unchanged', () => {
+    // ext:ExtensionContent is xsd:any — arbitrary XML, and where MyInvois 1.1
+    // puts the XAdES signature. There is no schema to build a component from,
+    // so the subtree is held as the nodes it was read as. Before this it threw
+    // "Cannot convert undefined or null to object" on the commonest real
+    // document there is.
+    const extension =
+      '<ext:UBLExtensions><ext:UBLExtension>' +
+      '<ext:ExtensionURI>urn:oasis:names:specification:ubl:dsig:enveloped:xades</ext:ExtensionURI>' +
+      '<ext:ExtensionContent><sig:UBLDocumentSignatures><sac:SignatureInformation>' +
+      '<cbc:ID>urn:oasis:names:specification:ubl:signature:1</cbc:ID>' +
+      '<ds:Signature Id="sig"><ds:SignatureValue>AAAA</ds:SignatureValue></ds:Signature>' +
+      '</sac:SignatureInformation></sig:UBLDocumentSignatures></ext:ExtensionContent>' +
+      '</ext:UBLExtension></ext:UBLExtensions>';
+    const cbc = 'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"';
+    const signed = xml
+      .replace('<cbc:ID>', `${extension}<cbc:ID>`)
+      .replace(cbc, `${cbc} xmlns:ext="urn:x" xmlns:sig="urn:y" xmlns:sac="urn:z" xmlns:ds="urn:d"`);
+
+    expect(Invoice.fromXml(signed).getXml(false, true)).toBe(signed);
+  });
+
+  it('keeps the attributes and nesting inside opaque content', () => {
+    // The subtree is not interpreted, so an attribute three levels down has to
+    // survive on its own — nothing in the params maps describes it.
+    const signed = Invoice.fromXml(
+      '<Invoice xmlns:ext="urn:x" xmlns:cbc="urn:c">' +
+        '<ext:UBLExtensions><ext:UBLExtension><ext:ExtensionContent>' +
+        '<a:Outer xmlns:a="urn:a" flag="1"><a:Inner deep="2">text</a:Inner></a:Outer>' +
+        '</ext:ExtensionContent></ext:UBLExtension></ext:UBLExtensions>' +
+        '<cbc:ID>INV-1</cbc:ID></Invoice>',
+    ).getXml(false, true);
+
+    expect(signed).toContain('<a:Outer xmlns:a="urn:a" flag="1"><a:Inner deep="2">text</a:Inner></a:Outer>');
+  });
+
+  it('normalises an empty element to the self-closing form', () => {
+    // The one way a round trip is not byte-identical, and it is the
+    // serializer's doing rather than the reader's: every empty element this
+    // library writes is self-closing, whether it was built or parsed. A
+    // document that arrives using <x></x> comes back as <x/> — equivalent XML,
+    // different bytes, which matters when a hash is computed over them.
+    const expanded =
+      '<Invoice xmlns:cbc="urn:c" xmlns:cac="urn:a"><cbc:ID>INV-1</cbc:ID>' +
+      '<cac:AccountingSupplierParty><cac:Party></cac:Party></cac:AccountingSupplierParty></Invoice>';
+
+    expect(Invoice.fromXml(expanded).getXml(false, true)).toBe(
+      expanded.replace('<cac:Party></cac:Party>', '<cac:Party/>'),
+    );
+  });
+
   it('rejects a document with no single root', () => {
     expect(() => Invoice.fromJson({ _D: 'urn:x' })).toThrow(/exactly one root element/);
   });
