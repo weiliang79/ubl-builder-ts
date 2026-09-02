@@ -1,5 +1,6 @@
 import { create } from 'xmlbuilder2';
-import { XmlContent, XmlNode } from './xmlNode';
+import { toCanonicalXml } from './canonical';
+import { keepAttribute, XmlContent, XmlNode } from './xmlNode';
 
 /**
  * The only place that knows a serialization dialect.
@@ -13,6 +14,15 @@ export interface XmlOptions {
   pretty?: boolean;
   /** Omit the XML declaration. */
   headless?: boolean;
+  /**
+   * Emit Canonical XML 1.1 — the form a signature is computed over.
+   *
+   * Overrides `pretty` and `headless`, which canonical form fixes: never
+   * indented, never with a declaration. This is what MyInvois names as
+   * `xml-c14n11`; see `canonical.ts`. Ordinary output is unaffected, so a
+   * document serialises to the same bytes it always did.
+   */
+  canonical?: boolean;
 }
 
 /**
@@ -31,7 +41,7 @@ export function toXmlObject(content: XmlContent): Record<string, unknown> {
   }
 
   Object.entries(content.attributes ?? {})
-    .filter(([, value]) => value)
+    .filter(([, value]) => keepAttribute(value))
     .forEach(([name, value]) => {
       out[`@${name}`] = value;
     });
@@ -50,7 +60,12 @@ export function toXmlObject(content: XmlContent): Record<string, unknown> {
 }
 
 /** Render a named node as an XML document. */
-export function toXmlString(node: XmlNode, { pretty = false, headless = false }: XmlOptions = {}): string {
+export function toXmlString(
+  node: XmlNode,
+  { pretty = false, headless = false, canonical = false }: XmlOptions = {},
+): string {
+  if (canonical) return toCanonicalXml(node);
+
   const document = { [node.name]: toXmlObject(node) };
 
   return create({ version: '1.0', encoding: 'UTF-8', standalone: false }, document).end({
@@ -119,7 +134,11 @@ export function toJsonObject(content: XmlContent): Record<string, unknown> {
   }
 
   Object.entries(content.attributes ?? {})
-    .filter(([name, value]) => value && !(name in XMLNS_TO_KEY))
+    // The same predicate the XML writer uses. They must agree on which
+    // attributes exist: the two renderings are the same document, and a
+    // document that reports `URI=""` as XML and omits it as JSON describes
+    // itself differently depending on which one you submit.
+    .filter(([name, value]) => keepAttribute(value) && !(name in XMLNS_TO_KEY))
     .forEach(([name, value]) => {
       out[name] = value;
     });

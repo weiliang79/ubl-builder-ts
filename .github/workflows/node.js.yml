@@ -45,6 +45,9 @@ jobs:
     # It used to be preinstalled on the ubuntu runner image; it no longer is.
     - run: sudo apt-get update && sudo apt-get install -y libxml2-utils
     - run: npm run validate:xsd
+    # Also needs xmllint: it stands in for LHDN's processor, checking that
+    # c14n11 of the bytes we submit equals the bytes we digest.
+    - run: npm run check:c14n
     - run: npm run check:schema
     - run: npm run check:types
     - run: npm run check:classref

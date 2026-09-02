@@ -1,2 +1,3 @@
 export * from './codes';
-export { myInvois } from './profile';
+export { MyInvoisProfile, myInvois } from './profile';
+export { Signer, SigningOptions, signInvoice } from './sign';

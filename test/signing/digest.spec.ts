@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { SHA1, SHA256, SHA384, SHA512 } from '../../src/profiles/dian/shas';
+import { SHA1, SHA256, SHA384, SHA512 } from '../../src/signing/digest';
 
 /**
  * These run on Web Crypto so the package bundles for a browser. Node's crypto

@@ -41,3 +41,23 @@ export interface XmlNode extends XmlContent {
 export interface NodeSource {
   toNode(): XmlContent;
 }
+
+/**
+ * Whether an attribute reaches the output.
+ *
+ * `undefined` and `null` mean "not set" and are dropped; everything else is
+ * written, the empty string included. That last part matters: XMLDSig's first
+ * `ds:Reference` carries `URI=""`, which means "this whole document" and is
+ * *not* the same as omitting the attribute — omitted, a verifier is told the
+ * data is identified some other way. A blanket truthiness test silently
+ * dropped it, and would drop a legitimate `0` too.
+ *
+ * `false` is kept for the same reason: `someIndicator="false"` is a statement,
+ * not an absence.
+ *
+ * It lives here rather than in serialize.ts because both writers need it and
+ * xmlNode.ts is the module neither of them can cycle through.
+ */
+export function keepAttribute(value: string | number | boolean | undefined | null): boolean {
+  return value !== undefined && value !== null;
+}
