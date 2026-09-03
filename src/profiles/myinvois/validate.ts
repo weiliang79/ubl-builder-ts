@@ -108,32 +108,34 @@ const textOf = (node: Located | undefined): string | undefined =>
   node?.node.value === undefined ? undefined : String(node.node.value);
 
 /**
- * Flatten the document, giving every element a path.
+ * The children of an element, each with its own path.
  *
  * Repeats are indexed from 1 (`cac:InvoiceLine[2]`) only when there is more
  * than one sibling of that name; a lone element keeps the plain path, which is
  * what a caller looking at their own source expects to see.
  */
+function childrenOf(entry: Located): Located[] {
+  const children = entry.node.children ?? [];
+  const counts = new Map<string, number>();
+  children.forEach((child) => counts.set(child.name, (counts.get(child.name) ?? 0) + 1));
+
+  const seen = new Map<string, number>();
+  return children.map((child) => {
+    const index = (seen.get(child.name) ?? 0) + 1;
+    seen.set(child.name, index);
+    const suffix = (counts.get(child.name) ?? 0) > 1 ? `[${index}]` : '';
+    return { node: child, path: `${entry.path}/${child.name}${suffix}` };
+  });
+}
+
+/** Flatten the document, giving every element a path. */
 function locate(root: XmlNode): Located[] {
   const out: Located[] = [];
-
-  const visit = (node: XmlNode, path: string): void => {
-    out.push({ node, path });
-
-    const children = node.children ?? [];
-    const counts = new Map<string, number>();
-    children.forEach((child) => counts.set(child.name, (counts.get(child.name) ?? 0) + 1));
-
-    const seen = new Map<string, number>();
-    children.forEach((child) => {
-      const index = (seen.get(child.name) ?? 0) + 1;
-      seen.set(child.name, index);
-      const suffix = (counts.get(child.name) ?? 0) > 1 ? `[${index}]` : '';
-      visit(child, `${path}/${child.name}${suffix}`);
-    });
+  const visit = (entry: Located): void => {
+    out.push(entry);
+    childrenOf(entry).forEach(visit);
   };
-
-  visit(root, `/${root.name}`);
+  visit({ node: root, path: `/${root.name}` });
   return out;
 }
 
@@ -262,24 +264,31 @@ const LINE_REQUIREMENTS: readonly Requirement[] = [
   { names: ['TaxTotal'], label: 'a tax total' },
 ];
 
+/**
+ * The conventional path for an element that is not there.
+ *
+ * A missing element has no name to read, so the prefix comes from UBL's own
+ * split: aggregates live in CommonAggregateComponents, leaf values in
+ * CommonBasicComponents. Without this the reported path would mix prefixed and
+ * bare segments and stop being something a caller can search their source for.
+ */
+const qualify = (names: readonly string[], leaf: boolean): string =>
+  names.map((name, index) => `${leaf && index === names.length - 1 ? 'cbc' : 'cac'}:${name}`).join('/');
+
 /** Check one requirement below `root`, reporting at most one issue. */
-function checkRequirement(
-  located: readonly Located[],
-  root: Located,
-  requirement: Requirement,
-  describe: string,
-): ValidationIssue | undefined {
-  const found = under(located, root.path, requirement.names);
+function checkRequirement(root: Located, requirement: Requirement, describe: string): ValidationIssue | undefined {
+  const found = under(root, requirement.names);
   const satisfied = requirement.leaf
     ? found.some((entry) => entry.node.value !== undefined && String(entry.node.value) !== '')
     : found.length > 0;
   if (satisfied) return undefined;
 
+  const path = qualify(requirement.names, requirement.leaf === true);
   return {
     code: 'MYI004',
-    path: `${root.path}/${requirement.names.join('/')}`,
+    path: `${root.path}/${path}`,
     message: `${describe} is missing ${requirement.label}.`,
-    expected: requirement.names[requirement.names.length - 1],
+    expected: path.slice(path.lastIndexOf('/') + 1),
   };
 }
 
@@ -290,29 +299,35 @@ function parentsOf(located: readonly Located[]): Map<XmlNode, Located> {
   return parents;
 }
 
-/** A path segment without its repeat index: `cac:InvoiceLine[2]` → `InvoiceLine`. */
-const segmentName = (segment: string): string => local(segment.replace(/\[\d+]$/, ''));
-
 /**
- * Every element sitting at exactly `names` below `rootPath`.
+ * Every element sitting at exactly `names` below `root`.
  *
  * Matched on local names so a prefix is irrelevant, and on exact depth so
  * `PostalAddress/CityName` cannot be satisfied by a `CityName` nested deeper —
  * MyInvois documents carry more than one party, and a rule about the supplier's
  * address must not be answered by a delivery address.
+ *
+ * It descends the subtree rather than filtering the flattened document, which
+ * is not a micro-optimisation: the flat scan made validation quadratic in line
+ * count, because every requirement of every line searched the whole document.
+ * A 500-line consolidated invoice took 1.5 seconds.
  */
-function under(located: readonly Located[], rootPath: string, names: readonly string[]): Located[] {
-  const prefix = `${rootPath}/`;
-  return located.filter((entry) => {
-    if (!entry.path.startsWith(prefix)) return false;
-    const rest = entry.path.slice(prefix.length).split('/');
-    return rest.length === names.length && names.every((name, index) => segmentName(rest[index]) === name);
-  });
+function under(root: Located, names: readonly string[]): Located[] {
+  let level = [root];
+  for (const name of names) {
+    const next: Located[] = [];
+    level.forEach((entry) => childrenOf(entry).forEach((child) => {
+      if (local(child.node.name) === name) next.push(child);
+    }));
+    if (next.length === 0) return [];
+    level = next;
+  }
+  return level;
 }
 
-/** The first element at `names` below the document root. */
-function at(located: readonly Located[], ...names: readonly string[]): Located | undefined {
-  return under(located, located[0]?.path ?? '', names)[0];
+/** The first element at `names` below `root`. */
+function at(root: Located, ...names: readonly string[]): Located | undefined {
+  return under(root, names)[0];
 }
 
 /** Every element with this local name, anywhere in the document. */
@@ -360,7 +375,7 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
   // elements that are present; a document missing half its fields should say
   // so rather than complain about an attribute on the half it has.
   DOCUMENT_REQUIREMENTS.forEach((requirement) => {
-    const issue = checkRequirement(located, root, requirement, 'the document');
+    const issue = checkRequirement(root, requirement, 'the document');
     if (issue) issues.push(issue);
   });
 
@@ -370,18 +385,18 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
       ['AccountingCustomerParty', 'the buyer'],
     ] as const
   ).forEach(([name, describe]) => {
-    const party = at(located, name);
+    const party = at(root, name);
     if (!party) return; // already reported as missing outright
     const rules = name === 'AccountingSupplierParty' ? [...PARTY_REQUIREMENTS, ...SUPPLIER_REQUIREMENTS] : PARTY_REQUIREMENTS;
     rules.forEach((requirement) => {
-      const issue = checkRequirement(located, party, requirement, describe);
+      const issue = checkRequirement(party, requirement, describe);
       if (issue) issues.push(issue);
     });
   });
 
-  under(located, root.path, ['InvoiceLine']).forEach((line, index) => {
+  under(root, ['InvoiceLine']).forEach((line, index) => {
     LINE_REQUIREMENTS.forEach((requirement) => {
-      const issue = checkRequirement(located, line, requirement, `invoice line ${index + 1}`);
+      const issue = checkRequirement(line, requirement, `invoice line ${index + 1}`);
       if (issue) issues.push(issue);
     });
   });
@@ -405,6 +420,9 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
 
   // ---- Every party needs a TIN -------------------------------------------
   (['AccountingSupplierParty', 'AccountingCustomerParty'] as const).forEach((party) => {
+    // Guarded: a party that is not there at all has already been reported, and
+    // saying "and it has no TIN" about a party that does not exist is noise.
+    if (at(root, party) === undefined) return;
     if (tinOf(located, party) === undefined) {
       issues.push({
         code: 'MYI002',
@@ -423,21 +441,9 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
   // each value is wrong in the other mode.
   const consolidated = tinOf(located, 'AccountingCustomerParty') === GENERAL_PUBLIC_TIN;
 
-  const buyerState = at(
-    located,
-    'AccountingCustomerParty',
-    'Party',
-    'PostalAddress',
-    'CountrySubentityCode',
-  );
-  const buyerCountry = at(
-    located,
-    'AccountingCustomerParty',
-    'Party',
-    'PostalAddress',
-    'Country',
-    'IdentificationCode',
-  );
+  const buyerAddress = ['AccountingCustomerParty', 'Party', 'PostalAddress'] as const;
+  const buyerState = at(root, ...buyerAddress, 'CountrySubentityCode');
+  const buyerCountry = at(root, ...buyerAddress, 'Country', 'IdentificationCode');
   const state = textOf(buyerState);
   const statePath =
     buyerState?.path ?? '/Invoice/cac:AccountingCustomerParty/cac:Party/cac:PostalAddress/cbc:CountrySubentityCode';

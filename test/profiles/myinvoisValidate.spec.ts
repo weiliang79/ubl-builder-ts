@@ -259,6 +259,33 @@ describe('MyInvois offline validation', () => {
       expect(validateInvoice(invoice).issues[0].message).toBe('the supplier is missing the name.');
     });
 
+    it('reports a missing element at a path a caller can search for', () => {
+      // A missing element has no name to read, so the prefix comes from UBL's
+      // own split: aggregates are cac, leaf values are cbc. Without it the path
+      // would mix prefixed and bare segments and match nothing in the source.
+      const invoice = ordinary();
+      invoice.setAccountingCustomerParty(
+        new AccountingCustomerParty({
+          party: new Party({
+            partyIdentifications: [
+              new PartyIdentification({ id: new UdtIdentifier('IG00000000000', { schemeID: 'TIN' }) }),
+            ],
+          }),
+        }),
+      );
+
+      expect(validateInvoice(invoice).issues.map((issue) => issue.path)).toContain(
+        '/Invoice/cac:AccountingCustomerParty/cac:Party/cac:PostalAddress/cbc:CityName',
+      );
+    });
+
+    it('does not complain twice about a party that is simply absent', () => {
+      // "the document is missing the buyer" and "the buyer has no TIN" describe
+      // one fault. Only the first is worth saying.
+      const codesFor = codes(new Invoice('INV-1'));
+      expect(codesFor.filter((code) => code === 'MYI002')).toStrictEqual([]);
+    });
+
     it('does not require what LHDN models as optional', () => {
       // PostalZone, TaxCurrencyCode and InvoicedQuantity all appear in both
       // accepted documents, which is not the same as being required. Excluding
