@@ -26,9 +26,10 @@ export class RawContent implements NodeSource {
     if (element.value !== undefined) content.value = element.value;
     if (Object.keys(element.attributes).length) content.attributes = { ...element.attributes };
     if (element.children.length) {
-      content.children = element.children.map(
-        (child): XmlNode => ({ name: child.name, ...RawContent.contentOf(child) }),
-      );
+      content.children = element.children.map((child): XmlNode => ({
+        name: child.name,
+        ...RawContent.contentOf(child),
+      }));
     }
     return content;
   }

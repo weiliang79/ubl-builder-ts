@@ -173,7 +173,9 @@ const REQUIRED_ATTRIBUTES: ReadonlyArray<{
   },
   {
     matches: (element, parent) =>
-      local(element.node.name) === 'IdentificationCode' && parent !== undefined && local(parent.node.name) === 'Country',
+      local(element.node.name) === 'IdentificationCode' &&
+      parent !== undefined &&
+      local(parent.node.name) === 'Country',
     attributes: ['listID', 'listAgencyID'],
     why: 'a country code with no list to resolve it against',
   },
@@ -316,9 +318,11 @@ function under(root: Located, names: readonly string[]): Located[] {
   let level = [root];
   for (const name of names) {
     const next: Located[] = [];
-    level.forEach((entry) => childrenOf(entry).forEach((child) => {
-      if (local(child.node.name) === name) next.push(child);
-    }));
+    level.forEach((entry) =>
+      childrenOf(entry).forEach((child) => {
+        if (local(child.node.name) === name) next.push(child);
+      }),
+    );
     if (next.length === 0) return [];
     level = next;
   }
@@ -336,7 +340,10 @@ function allNamed(located: readonly Located[], name: string): Located[] {
 }
 
 /** The value of a party's `schemeID="TIN"` identifier, if it has one. */
-function tinOf(located: readonly Located[], party: 'AccountingSupplierParty' | 'AccountingCustomerParty'): string | undefined {
+function tinOf(
+  located: readonly Located[],
+  party: 'AccountingSupplierParty' | 'AccountingCustomerParty',
+): string | undefined {
   // Matched on path substrings rather than exact segments because the prefix
   // is not fixed: `Invoice.fromXml` preserves whatever the source document
   // used, so the segment may be `cac:AccountingSupplierParty` or bare.
@@ -387,7 +394,8 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
   ).forEach(([name, describe]) => {
     const party = at(root, name);
     if (!party) return; // already reported as missing outright
-    const rules = name === 'AccountingSupplierParty' ? [...PARTY_REQUIREMENTS, ...SUPPLIER_REQUIREMENTS] : PARTY_REQUIREMENTS;
+    const rules =
+      name === 'AccountingSupplierParty' ? [...PARTY_REQUIREMENTS, ...SUPPLIER_REQUIREMENTS] : PARTY_REQUIREMENTS;
     rules.forEach((requirement) => {
       const issue = checkRequirement(party, requirement, describe);
       if (issue) issues.push(issue);

@@ -1,7 +1,7 @@
 import { Invoice } from '../../documents';
 import { Profile } from '../Profile';
 import { SigningOptions, signInvoice } from './sign';
-import { assertValidInvoice, ValidationResult, validateInvoice } from './validate';
+import { assertValidInvoice, validateInvoice, ValidationResult } from './validate';
 
 /**
  * MyInvois adds one member to {@link Profile}.
