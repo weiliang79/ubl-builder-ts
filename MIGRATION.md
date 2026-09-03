@@ -487,6 +487,40 @@ The rules and their evidence are documented in `src/profiles/myinvois/validate.t
 Two of them — `CV317` and the consolidated classification code — were learned by
 having LHDN's preprod API reject a real submission, not from documentation.
 
+## `validateInvoice` returns a result, not an array
+
+```ts
+// before
+const issues = validateInvoice(invoice);
+if (issues.length > 0) { /* … */ }
+
+// now
+const { valid, issues } = validateInvoice(invoice);
+```
+
+`myInvois.validate(invoice)` is the same thing reached from the profile.
+
+The shape mirrors LHDN's own response, which reports a `status` alongside its
+`validationSteps`. That lets a caller handle the offline verdict and the API's
+with one code path instead of unwrapping an array in one place and a status
+object in the other. `valid` is derivable from `issues.length`; the redundancy
+is deliberate.
+
+## Required elements are checked
+
+`MYI004` reports an element MyInvois requires that the document does not have.
+UBL marks most of them optional, so nothing else in the toolchain catches it —
+a document with no issue date, no tax total, or a party with no address is
+schema-valid.
+
+**Who is affected:** anyone whose document was incomplete. It was already going
+to be rejected by LHDN; it now fails in your own process instead.
+
+A rule is admitted only if the element appears in both documents this repo knows
+LHDN accepted. Only the fields common to every Invoice type are checked — the
+per-type rules for credit, debit, refund and self-billed documents are not,
+because this project has submitted none of them.
+
 ## Every issue is reported at once
 
 `MyInvoisValidationError.issues` carries the full set rather than the first

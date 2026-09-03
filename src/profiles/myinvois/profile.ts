@@ -1,7 +1,7 @@
 import { Invoice } from '../../documents';
 import { Profile } from '../Profile';
 import { SigningOptions, signInvoice } from './sign';
-import { assertValidInvoice } from './validate';
+import { assertValidInvoice, ValidationResult, validateInvoice } from './validate';
 
 /**
  * MyInvois adds one member to {@link Profile}.
@@ -13,6 +13,7 @@ import { assertValidInvoice } from './validate';
  */
 export interface MyInvoisProfile extends Profile {
   withSigner(options: SigningOptions): Profile;
+  validate(document: Invoice): ValidationResult;
 }
 
 /**
@@ -59,6 +60,23 @@ export const myInvois = {
       .addProperty('xmlns', 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2')
       .addProperty('xmlns:cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2')
       .addProperty('xmlns:cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+  },
+
+  /**
+   * Check the document against the MyInvois rules decidable offline, without
+   * throwing.
+   *
+   * ```ts
+   * const { valid, issues } = myInvois.validate(invoice);
+   * ```
+   *
+   * The result is shaped like LHDN's own response — a verdict alongside the
+   * detail — so a caller can treat the offline check and the API's answer the
+   * same way. Reach for {@link myInvois.finalize} instead when an invalid
+   * document should stop the build.
+   */
+  validate(document: Invoice): ValidationResult {
+    return validateInvoice(document);
   },
 
   /**

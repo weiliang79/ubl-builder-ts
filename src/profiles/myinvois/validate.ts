@@ -69,6 +69,20 @@ export interface ValidationIssue {
   readonly actual?: string;
 }
 
+/**
+ * The verdict on a document.
+ *
+ * Shaped like LHDN's own response — which reports a `status` alongside its
+ * `validationSteps` — so a caller can handle the offline verdict and the API's
+ * with the same code instead of unwrapping an array in one place and a status
+ * object in the other. `valid` is derivable from `issues.length`; the small
+ * redundancy buys that symmetry.
+ */
+export interface ValidationResult {
+  readonly valid: boolean;
+  readonly issues: readonly ValidationIssue[];
+}
+
 /** Thrown by the profile's `finalize` hook when {@link validateInvoice} finds anything. */
 export class MyInvoisValidationError extends Error {
   readonly issues: readonly ValidationIssue[];
@@ -175,6 +189,100 @@ const REQUIRED_ATTRIBUTES: ReadonlyArray<{
   },
 ];
 
+/**
+ * Elements MyInvois requires on every document type.
+ *
+ * Admitted by evidence, not by reading the spec's "mandatory" column: each one
+ * is present in BOTH documents this repo knows LHDN accepted — the production
+ * fixture and LHDN's own published signed sample. Anything absent from either
+ * is excluded, which is how `cbc:ElectronicMail` was ruled out.
+ *
+ * Three candidates present in both are still excluded, because appearing in two
+ * documents is not evidence of being required: `cbc:PostalZone`,
+ * `cbc:TaxCurrencyCode` and `cbc:InvoicedQuantity` are all modelled by LHDN as
+ * optional fields in their own right, so requiring them could reject a document
+ * LHDN accepts.
+ *
+ * Scoped to what every Invoice type needs. Credit, debit and refund notes also
+ * require `cac:BillingReference` naming the original, and the self-billed types
+ * (11–14) swap which party carries what; neither is checked here, because this
+ * project has submitted neither and a guess would cost more than it saves.
+ *
+ * `leaf` entries must additionally carry a non-empty value. That catches the
+ * library's one silent failure mode: a plain object passed where a component
+ * instance is required emits an EMPTY element rather than raising, so
+ * `partyLegalEntities: [{ registrationName: 'X' }]` yields
+ * `<cac:PartyLegalEntity/>` and loses the name without a word.
+ */
+interface Requirement {
+  /** Local names from the element the rule is rooted at. */
+  readonly names: readonly string[];
+  /** What is missing, phrased as the caller would name it. */
+  readonly label: string;
+  /** Require a non-empty value, not merely the element. */
+  readonly leaf?: boolean;
+}
+
+const DOCUMENT_REQUIREMENTS: readonly Requirement[] = [
+  { names: ['ID'], label: 'the e-Invoice number', leaf: true },
+  { names: ['IssueDate'], label: 'the issue date', leaf: true },
+  { names: ['IssueTime'], label: 'the issue time (UTC — LHDN renders it as MYT)', leaf: true },
+  { names: ['InvoiceTypeCode'], label: 'the document type code', leaf: true },
+  { names: ['DocumentCurrencyCode'], label: 'the document currency', leaf: true },
+  { names: ['AccountingSupplierParty'], label: 'the supplier' },
+  { names: ['AccountingCustomerParty'], label: 'the buyer' },
+  { names: ['TaxTotal'], label: 'the document-level tax total' },
+  { names: ['LegalMonetaryTotal'], label: 'the document totals' },
+  { names: ['InvoiceLine'], label: 'at least one invoice line' },
+];
+
+/** Required of both the supplier and the buyer. */
+const PARTY_REQUIREMENTS: readonly Requirement[] = [
+  { names: ['Party', 'PartyLegalEntity', 'RegistrationName'], label: 'the name', leaf: true },
+  { names: ['Party', 'PostalAddress', 'CityName'], label: 'the city', leaf: true },
+  { names: ['Party', 'PostalAddress', 'CountrySubentityCode'], label: 'the state code', leaf: true },
+  { names: ['Party', 'PostalAddress', 'AddressLine', 'Line'], label: 'an address line', leaf: true },
+  { names: ['Party', 'PostalAddress', 'Country', 'IdentificationCode'], label: 'the country code', leaf: true },
+  { names: ['Party', 'Contact', 'Telephone'], label: 'a contact number', leaf: true },
+];
+
+/** Required of the supplier alone. */
+const SUPPLIER_REQUIREMENTS: readonly Requirement[] = [
+  { names: ['Party', 'IndustryClassificationCode'], label: 'the MSIC code', leaf: true },
+];
+
+/** Required of every invoice line. */
+const LINE_REQUIREMENTS: readonly Requirement[] = [
+  { names: ['ID'], label: 'a line number', leaf: true },
+  { names: ['LineExtensionAmount'], label: 'the line subtotal', leaf: true },
+  { names: ['Item', 'Description'], label: 'a description', leaf: true },
+  { names: ['Item', 'CommodityClassification', 'ItemClassificationCode'], label: 'a classification code', leaf: true },
+  { names: ['Price', 'PriceAmount'], label: 'a unit price', leaf: true },
+  { names: ['ItemPriceExtension', 'Amount'], label: 'the amount excluding tax', leaf: true },
+  { names: ['TaxTotal'], label: 'a tax total' },
+];
+
+/** Check one requirement below `root`, reporting at most one issue. */
+function checkRequirement(
+  located: readonly Located[],
+  root: Located,
+  requirement: Requirement,
+  describe: string,
+): ValidationIssue | undefined {
+  const found = under(located, root.path, requirement.names);
+  const satisfied = requirement.leaf
+    ? found.some((entry) => entry.node.value !== undefined && String(entry.node.value) !== '')
+    : found.length > 0;
+  if (satisfied) return undefined;
+
+  return {
+    code: 'MYI004',
+    path: `${root.path}/${requirement.names.join('/')}`,
+    message: `${describe} is missing ${requirement.label}.`,
+    expected: requirement.names[requirement.names.length - 1],
+  };
+}
+
 /** Index every element by its parent, so a rule can ask what an element sits inside. */
 function parentsOf(located: readonly Located[]): Map<XmlNode, Located> {
   const parents = new Map<XmlNode, Located>();
@@ -182,13 +290,29 @@ function parentsOf(located: readonly Located[]): Map<XmlNode, Located> {
   return parents;
 }
 
-/** The first element at `path`, matched on local names so prefixes do not matter. */
-function at(located: readonly Located[], ...names: readonly string[]): Located | undefined {
-  return located.find((entry) => {
-    const segments = entry.path.split('/').slice(1);
-    if (segments.length !== names.length + 1) return false;
-    return names.every((name, index) => local(segments[index + 1].replace(/\[\d+]$/, '')) === name);
+/** A path segment without its repeat index: `cac:InvoiceLine[2]` → `InvoiceLine`. */
+const segmentName = (segment: string): string => local(segment.replace(/\[\d+]$/, ''));
+
+/**
+ * Every element sitting at exactly `names` below `rootPath`.
+ *
+ * Matched on local names so a prefix is irrelevant, and on exact depth so
+ * `PostalAddress/CityName` cannot be satisfied by a `CityName` nested deeper —
+ * MyInvois documents carry more than one party, and a rule about the supplier's
+ * address must not be answered by a delivery address.
+ */
+function under(located: readonly Located[], rootPath: string, names: readonly string[]): Located[] {
+  const prefix = `${rootPath}/`;
+  return located.filter((entry) => {
+    if (!entry.path.startsWith(prefix)) return false;
+    const rest = entry.path.slice(prefix.length).split('/');
+    return rest.length === names.length && names.every((name, index) => segmentName(rest[index]) === name);
   });
+}
+
+/** The first element at `names` below the document root. */
+function at(located: readonly Located[], ...names: readonly string[]): Located | undefined {
+  return under(located, located[0]?.path ?? '', names)[0];
 }
 
 /** Every element with this local name, anywhere in the document. */
@@ -222,12 +346,45 @@ function tinOf(located: readonly Located[], party: 'AccountingSupplierParty' | '
  * its `propertyPath` named was never wrong, and fixing one error at a time led
  * nowhere. A caller needs the whole set.
  *
- * @returns the issues found, empty when the document passes.
+ * @returns the verdict, with every issue found.
  */
-export function validateInvoice(invoice: Invoice): ValidationIssue[] {
+export function validateInvoice(invoice: Invoice): ValidationResult {
   const located = locate(invoice.toNode());
+  const root = located[0];
   const parents = parentsOf(located);
   const issues: ValidationIssue[] = [];
+
+  // ---- Elements MyInvois requires at all -------------------------------
+  //
+  // Reported before anything else, because the checks that follow describe
+  // elements that are present; a document missing half its fields should say
+  // so rather than complain about an attribute on the half it has.
+  DOCUMENT_REQUIREMENTS.forEach((requirement) => {
+    const issue = checkRequirement(located, root, requirement, 'the document');
+    if (issue) issues.push(issue);
+  });
+
+  (
+    [
+      ['AccountingSupplierParty', 'the supplier'],
+      ['AccountingCustomerParty', 'the buyer'],
+    ] as const
+  ).forEach(([name, describe]) => {
+    const party = at(located, name);
+    if (!party) return; // already reported as missing outright
+    const rules = name === 'AccountingSupplierParty' ? [...PARTY_REQUIREMENTS, ...SUPPLIER_REQUIREMENTS] : PARTY_REQUIREMENTS;
+    rules.forEach((requirement) => {
+      const issue = checkRequirement(located, party, requirement, describe);
+      if (issue) issues.push(issue);
+    });
+  });
+
+  under(located, root.path, ['InvoiceLine']).forEach((line, index) => {
+    LINE_REQUIREMENTS.forEach((requirement) => {
+      const issue = checkRequirement(located, line, requirement, `invoice line ${index + 1}`);
+      if (issue) issues.push(issue);
+    });
+  });
 
   // ---- Attributes whose absence makes a value ambiguous -------------------
   located.forEach((element) => {
@@ -330,11 +487,11 @@ export function validateInvoice(invoice: Invoice): ValidationIssue[] {
     }
   });
 
-  return issues;
+  return { valid: issues.length === 0, issues };
 }
 
 /** Run {@link validateInvoice} and throw if it finds anything. */
 export function assertValidInvoice(invoice: Invoice): void {
-  const issues = validateInvoice(invoice);
-  if (issues.length > 0) throw new MyInvoisValidationError(issues);
+  const { valid, issues } = validateInvoice(invoice);
+  if (!valid) throw new MyInvoisValidationError(issues);
 }

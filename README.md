@@ -177,27 +177,47 @@ try {
 }
 ```
 
-`validateInvoice(invoice)` returns the same issues without throwing, if you
-would rather not use exceptions for control flow.
+`myInvois.validate(invoice)` answers the same question without throwing:
 
-Two classes of rejection are covered, both of which otherwise cost a round trip
+```ts
+const { valid, issues } = myInvois.validate(invoice);
+```
+
+The result is shaped like LHDN's own response — a verdict alongside the detail —
+so the offline check and the API's answer can be handled by the same code.
+
+Three classes of rejection are covered, all of which otherwise cost a round trip
 to LHDN:
 
-- **A dropped attribute.** Scalar params accept a bare `string` as shorthand for
-  the `Udt*` classes, and a bare string carries no attributes — so
+- **A missing required element** (`MYI004`). UBL marks most of MyInvois's
+  mandatory fields optional, so the type system cannot help: a document with no
+  issue date, no tax total, or a party with no address compiles and serialises
+  happily. This also catches the library's one silent failure — a plain object
+  passed where a component instance is required emits an empty element rather
+  than raising, and an empty element has no value to find.
+- **A dropped attribute** (`MYI001`). Scalar params accept a bare `string` as
+  shorthand for the `Udt*` classes, and a bare string carries no attributes — so
   `taxAmount: '0.00'` emits an amount with no `currencyID`. That is schema-valid
   and rejected on submission. The same applies to `schemeID`, `listID` and
   `listVersionID`.
-- **An incoherent consolidated e-Invoice.** Using the General Public TIN as the
-  buyer silently reclassifies the document, and the buyer's state code and every
-  line's classification code must change with it.
+- **An incoherent consolidated e-Invoice** (`CV317`, `MYI003`). Using the General
+  Public TIN as the buyer silently reclassifies the document, and the buyer's
+  state code and every line's classification code must change with it.
 
 The rule of admission is that a check must be decidable from the document alone
 and must never reject a document LHDN accepts — a validator that blocks valid
 invoices is worse than none, since the only workaround is to stop using it.
-`unitCode` on `cbc:InvoicedQuantity` is the rule that criterion excludes: a
-quantity with no unit reads as ambiguous, but LHDN models Measurement as an
-optional field, so omitting it is plausibly accepted. Anything needing LHDN's own state (whether a TIN
+A presence rule is admitted only if the element appears in **both** documents
+this repo knows LHDN accepted — the production fixture and LHDN's own published
+signed sample — which is how `cbc:ElectronicMail` was ruled out. Appearing in
+both is still not proof of being required, so `cbc:PostalZone`,
+`cbc:TaxCurrencyCode`, `cbc:InvoicedQuantity` and its `unitCode` are excluded
+too: LHDN models each as an optional field in its own right.
+
+Only the fields every Invoice type needs are checked. Credit, debit and refund
+notes also require `cac:BillingReference` naming the original, and the
+self-billed types (11–14) swap which party carries what; neither is checked,
+because this project has submitted neither. Anything needing LHDN's own state (whether a TIN
 exists, whether it matches your credentials, whether a submission duplicates an
 earlier one) is left to the API. Monetary totals are deliberately not checked;
 see the BR-CO-13 note above.

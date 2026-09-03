@@ -8,5 +8,6 @@ export {
   MyInvoisValidationError,
   NOT_APPLICABLE_STATE_CODE,
   ValidationIssue,
+  ValidationResult,
   validateInvoice,
 } from './validate';

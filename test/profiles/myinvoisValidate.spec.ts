@@ -3,18 +3,24 @@ import { join } from 'node:path';
 import {
   AccountingCustomerParty,
   AccountingSupplierParty,
+  AddressLine,
   CommodityClassification,
+  Contact,
   Country,
   InvoiceLine,
   Item,
+  ItemPriceExtension,
   LegalMonetaryTotal,
   Party,
   PartyIdentification,
   PartyLegalEntity,
   PostalAddress,
   Price,
+  TaxCategory,
+  TaxSubtotal,
+  TaxTotal,
 } from '../../src/cac';
-import { UdtAmount, UdtCode, UdtIdentifier, UdtQuantity, UdtText } from '../../src/datatypes/udt';
+import { UdtAmount, UdtCode, UdtIdentifier, UdtText } from '../../src/datatypes/udt';
 import { Invoice } from '../../src/documents';
 import {
   CLASSIFICATION_ATTRIBUTES,
@@ -25,30 +31,73 @@ import {
   IdentificationScheme,
   myInvois,
   MyInvoisValidationError,
+  otherTaxScheme,
+  TaxCategoryCode,
   validateInvoice,
 } from '../../src/profiles/myinvois';
 
 /**
  * The offline MyInvois rules.
  *
- * Two of these are not inferred from documentation: `CV317` and the
- * consolidated classification code were both learned by having LHDN's preprod
- * API reject a real submission on 2026-09-03, and the shapes asserted below are
- * the ones it then accepted.
+ * Nothing here is inferred from documentation. `CV317` and the consolidated
+ * classification code were learned by having LHDN's preprod API reject a real
+ * submission on 2026-09-03, and the shapes pinned as passing are the ones it
+ * then accepted. The presence rules are admitted only if the element appears in
+ * BOTH documents this repo knows LHDN accepted.
  *
- * The most important test in this file is the first one. A validator's real
+ * The most important tests in this file are the first three. A validator's real
  * risk is not that it misses something — it is that it blocks a document LHDN
  * would have accepted, because the only workaround for that is to stop using
- * it. Both accepted shapes are therefore pinned as passing before any rule is
- * tested for firing.
+ * it. Every accepted shape available is therefore pinned as passing before any
+ * rule is tested for firing.
  */
 
 const FIXTURE = join(__dirname, '..', 'fixtures', 'myinvois-invoice.xml');
+const SIGNED_SAMPLE = join(__dirname, '..', 'fixtures', 'lhdn', 'one-doc-signed.xml');
 const CURRENCY = 'MYR';
 
 const money = (value: string) => new UdtAmount(value, { currencyID: CURRENCY });
-const identity = (value: string, schemeID: string) =>
-  new PartyIdentification({ id: new UdtIdentifier(value, { schemeID }) });
+const zeroRatedTax = () =>
+  new TaxTotal({
+    taxAmount: money('0.00'),
+    taxSubtotals: [
+      new TaxSubtotal({
+        taxableAmount: money('0.00'),
+        taxAmount: money('0.00'),
+        taxCategory: new TaxCategory({ id: TaxCategoryCode.NotApplicable, taxScheme: otherTaxScheme() }),
+      }),
+    ],
+  });
+
+interface PartyShape {
+  tin: string;
+  /** `null` drops the attribute, which is what a bare string does. */
+  tinScheme?: string | null;
+  state: string;
+  country: string;
+  supplier?: boolean;
+  name?: PartyLegalEntity[];
+}
+
+/** A party carrying everything MyInvois requires, varied only where a test needs it. */
+function completeParty({ tin, tinScheme = IdentificationScheme.Tin, state, country, supplier, name }: PartyShape): Party {
+  return new Party({
+    ...(supplier ? { industryClassificationCode: new UdtCode('86909', { name: 'General Clinic Services' }) } : {}),
+    partyIdentifications: [
+      new PartyIdentification({
+        id: tinScheme === null ? new UdtIdentifier(tin) : new UdtIdentifier(tin, { schemeID: tinScheme }),
+      }),
+    ],
+    postalAddress: new PostalAddress({
+      cityName: 'KUALA LUMPUR',
+      countrySubentityCode: state,
+      addressLines: [new AddressLine({ line: '1 Jalan Contoh' })],
+      country: new Country({ identificationCode: new UdtCode(country, COUNTRY_CODE_ATTRIBUTES) }),
+    }),
+    partyLegalEntities: name ?? [new PartyLegalEntity({ registrationName: 'EXAMPLE CLINIC SDN. BHD.' })],
+    contact: new Contact({ telephone: '+60312345678' }),
+  });
+}
 
 interface Shape {
   buyerTin: string;
@@ -58,7 +107,7 @@ interface Shape {
   lines?: number;
 }
 
-/** A complete, otherwise-valid invoice, varied only where a test needs it. */
+/** A complete, otherwise-valid invoice. */
 function invoiceWith({ buyerTin, state, country = 'MYS', classification, lines = 1 }: Shape): Invoice {
   const invoice = new Invoice('INV-1');
   myInvois.defaults!(invoice);
@@ -69,43 +118,24 @@ function invoiceWith({ buyerTin, state, country = 'MYS', classification, lines =
     .setInvoiceTypeCode(DocumentTypeCode.Invoice, { listVersionID: DocumentVersion.Unsigned })
     .setDocumentCurrencyCode(CURRENCY);
 
-  const address = (line: string) =>
-    new PostalAddress({
-      cityName: 'KUALA LUMPUR',
-      postalZone: '50000',
-      countrySubentityCode: state,
-      country: new Country({ identificationCode: new UdtCode(country, COUNTRY_CODE_ATTRIBUTES) }),
-      addressLines: [{ line }] as never,
-    });
-
   invoice.setAccountingSupplierParty(
     new AccountingSupplierParty({
-      party: new Party({
-        partyIdentifications: [identity('C00000000000', IdentificationScheme.Tin)],
-        postalAddress: address('1 Jalan Contoh'),
-        partyLegalEntities: [new PartyLegalEntity({ registrationName: 'EXAMPLE CLINIC SDN. BHD.' })],
-      }),
+      party: completeParty({ tin: 'C00000000000', state: '14', country: 'MYS', supplier: true }),
     }),
   );
-
   invoice.setAccountingCustomerParty(
-    new AccountingCustomerParty({
-      party: new Party({
-        partyIdentifications: [identity(buyerTin, IdentificationScheme.Tin)],
-        postalAddress: address('2 Jalan Contoh'),
-        partyLegalEntities: [new PartyLegalEntity({ registrationName: 'General Public' })],
-      }),
-    }),
+    new AccountingCustomerParty({ party: completeParty({ tin: buyerTin, state, country }) }),
   );
 
+  invoice.addTaxTotal(zeroRatedTax());
   invoice.setLegalMonetaryTotal(new LegalMonetaryTotal({ payableAmount: money('90.00') }));
 
   for (let index = 0; index < lines; index += 1) {
     invoice.addInvoiceLine(
       new InvoiceLine({
         id: String(index + 1),
-        invoicedQuantity: new UdtQuantity('1.00', { unitCode: 'XUN' }),
         lineExtensionAmount: money('90.00'),
+        taxTotals: [zeroRatedTax()],
         item: new Item({
           descriptions: [new UdtText('Consultation')],
           commodityClassification: [
@@ -115,6 +145,7 @@ function invoiceWith({ buyerTin, state, country = 'MYS', classification, lines =
           ],
         }),
         price: new Price({ priceAmount: money('90.00') }),
+        itemPriceExtension: new ItemPriceExtension({ amount: money('90.00') }),
       }),
     );
   }
@@ -128,30 +159,113 @@ const ordinary = (overrides: Partial<Shape> = {}) =>
 const consolidated = (overrides: Partial<Shape> = {}) =>
   invoiceWith({ buyerTin: GENERAL_PUBLIC_TIN, state: '17', classification: '004', ...overrides });
 
-const codes = (invoice: Invoice) => validateInvoice(invoice).map((issue) => issue.code);
+const codes = (invoice: Invoice) => validateInvoice(invoice).issues.map((issue) => issue.code);
+const parse = (path: string) => Invoice.fromXml(readFileSync(path, 'utf8'));
 
 describe('MyInvois offline validation', () => {
   describe('documents LHDN has actually accepted', () => {
     it('passes the accepted production fixture', () => {
-      expect(validateInvoice(Invoice.fromXml(readFileSync(FIXTURE, 'utf8')))).toStrictEqual([]);
+      expect(validateInvoice(parse(FIXTURE))).toStrictEqual({ valid: true, issues: [] });
     });
 
     it("passes LHDN's own published signed reference document", () => {
-      // The strongest false-positive guard available offline, and the only one
-      // this project did not author: a complete, signed, real document written
-      // by the party doing the validating. It also exercises a shape nothing
-      // else here does — a signed document carries ext:UBLExtensions and a
-      // ds:Signature tree, and no rule may fire on any of it.
-      const signed = join(__dirname, '..', 'fixtures', 'lhdn', 'one-doc-signed.xml');
-      expect(validateInvoice(Invoice.fromXml(readFileSync(signed, 'utf8')))).toStrictEqual([]);
+      // The strongest false-positive guard available offline and the only
+      // document here this project did not author: a complete, signed, real
+      // document written by the party doing the validating. It also exercises a
+      // shape nothing else covers — a signed document carries ext:UBLExtensions
+      // and a full ds:Signature tree, and no rule may fire on any of it.
+      expect(validateInvoice(parse(SIGNED_SAMPLE))).toStrictEqual({ valid: true, issues: [] });
     });
 
-    it('passes an ordinary invoice', () => {
-      expect(validateInvoice(ordinary())).toStrictEqual([]);
+    it('passes both shapes preprod accepted on 2026-09-03', () => {
+      expect(validateInvoice(ordinary()).valid).toBe(true);
+      expect(validateInvoice(consolidated()).valid).toBe(true);
+    });
+  });
+
+  describe('the result', () => {
+    it('reports a verdict alongside the detail, like LHDN does', () => {
+      const result = validateInvoice(consolidated({ state: '14' }));
+
+      expect(result.valid).toBe(false);
+      expect(result.issues).toHaveLength(1);
     });
 
-    it('passes a consolidated invoice in the shape preprod accepted on 2026-09-03', () => {
-      expect(validateInvoice(consolidated())).toStrictEqual([]);
+    it('is reachable from the profile without throwing', () => {
+      expect(myInvois.validate(ordinary()).valid).toBe(true);
+      expect(myInvois.validate(new Invoice('INV-1')).valid).toBe(false);
+    });
+  });
+
+  describe('elements MyInvois requires at all', () => {
+    it('rejects a document that is merely well-formed', () => {
+      // Before presence checking, this passed: an Invoice with two TINs and
+      // nothing else — no dates, no type code, no currency, no lines, no
+      // totals — returned no issues at all.
+      const result = validateInvoice(new Invoice('INV-1'));
+
+      expect(result.valid).toBe(false);
+      expect(result.issues.filter((issue) => issue.code === 'MYI004').length).toBeGreaterThan(5);
+      expect(result.issues.map((issue) => issue.message)).toContain('the document is missing the issue date.');
+    });
+
+    it('names the line that is incomplete', () => {
+      // cac:ItemPriceExtension is optional in UBL and required by MyInvois,
+      // which is exactly the gap this validator exists to close — the type
+      // system already refuses to build a line without lineExtensionAmount or
+      // item, so those need no rule.
+      const invoice = ordinary({ lines: 2 });
+      invoice.addInvoiceLine(
+        new InvoiceLine({
+          id: '3',
+          lineExtensionAmount: money('10.00'),
+          taxTotals: [zeroRatedTax()],
+          item: new Item({
+            descriptions: [new UdtText('Dressing')],
+            commodityClassification: [
+              new CommodityClassification({ itemClassificationCode: new UdtCode('020', CLASSIFICATION_ATTRIBUTES) }),
+            ],
+          }),
+          price: new Price({ priceAmount: money('10.00') }),
+        }),
+      );
+
+      const [issue] = validateInvoice(invoice).issues;
+      expect(issue.code).toBe('MYI004');
+      expect(issue.message).toBe('invoice line 3 is missing the amount excluding tax.');
+      expect(issue.path).toContain('cac:InvoiceLine[3]');
+    });
+
+    it('catches the empty element a plain object produces', () => {
+      // The library's one silent failure: a plain object where a component
+      // instance is required emits <cac:PartyLegalEntity/> rather than raising,
+      // losing the name without a word. A presence rule that demands a non-empty
+      // value is what turns that back into an error.
+      const invoice = ordinary();
+      invoice.setAccountingSupplierParty(
+        new AccountingSupplierParty({
+          party: completeParty({
+            tin: 'C00000000000',
+            state: '14',
+            country: 'MYS',
+            supplier: true,
+            name: [{ registrationName: 'EXAMPLE' } as never],
+          }),
+        }),
+      );
+
+      expect(invoice.getXml(false, true)).toContain('<cac:PartyLegalEntity/>');
+      expect(codes(invoice)).toStrictEqual(['MYI004']);
+      expect(validateInvoice(invoice).issues[0].message).toBe('the supplier is missing the name.');
+    });
+
+    it('does not require what LHDN models as optional', () => {
+      // PostalZone, TaxCurrencyCode and InvoicedQuantity all appear in both
+      // accepted documents, which is not the same as being required. Excluding
+      // them is the same discipline that excluded unitCode.
+      expect(validateInvoice(ordinary()).valid).toBe(true);
+      expect(ordinary().getXml(false, true)).not.toContain('PostalZone');
+      expect(ordinary().getXml(false, true)).not.toContain('InvoicedQuantity');
     });
   });
 
@@ -159,7 +273,7 @@ describe('MyInvois offline validation', () => {
     // Nothing in the document declares it is consolidated: the General Public
     // buyer TIN decides it, and other fields must follow.
     it('requires state code 17 when the buyer is General Public', () => {
-      const [issue, ...rest] = validateInvoice(consolidated({ state: '14' }));
+      const [issue, ...rest] = validateInvoice(consolidated({ state: '14' })).issues;
 
       expect(issue.code).toBe('CV317');
       expect(issue.expected).toBe('17');
@@ -177,11 +291,11 @@ describe('MyInvois offline validation', () => {
     });
 
     it('allows state code 17 on a non-Malaysian address', () => {
-      expect(validateInvoice(ordinary({ state: '17', country: 'SGP' }))).toStrictEqual([]);
+      expect(validateInvoice(ordinary({ state: '17', country: 'SGP' })).valid).toBe(true);
     });
 
     it('requires classification 004 on every consolidated line', () => {
-      const issues = validateInvoice(consolidated({ classification: '020', lines: 2 }));
+      const { issues } = validateInvoice(consolidated({ classification: '020', lines: 2 }));
 
       expect(issues.map((issue) => issue.code)).toStrictEqual(['MYI003', 'MYI003']);
       // Indexed, so a caller can find WHICH line is wrong.
@@ -204,7 +318,7 @@ describe('MyInvois offline validation', () => {
       const invoice = ordinary();
       invoice.setLegalMonetaryTotal(new LegalMonetaryTotal({ payableAmount: '90.00' }));
 
-      const [issue] = validateInvoice(invoice);
+      const [issue] = validateInvoice(invoice).issues;
       expect(issue.code).toBe('MYI001');
       expect(issue.path).toBe('/Invoice/cac:LegalMonetaryTotal/cbc:PayableAmount');
       expect(issue.message).toContain('@currencyID');
@@ -214,7 +328,7 @@ describe('MyInvois offline validation', () => {
       const invoice = ordinary();
       invoice.setAccountingSupplierParty(
         new AccountingSupplierParty({
-          party: new Party({ partyIdentifications: [new PartyIdentification({ id: 'C00000000000' })] }),
+          party: completeParty({ tin: 'C00000000000', tinScheme: null, state: '14', country: 'MYS', supplier: true }),
         }),
       );
 
@@ -227,7 +341,7 @@ describe('MyInvois offline validation', () => {
       const invoice = ordinary();
       invoice.setInvoiceTypeCode(DocumentTypeCode.Invoice);
 
-      const [issue] = validateInvoice(invoice);
+      const [issue] = validateInvoice(invoice).issues;
       expect(issue.code).toBe('MYI001');
       expect(issue.message).toContain('@listVersionID');
     });
