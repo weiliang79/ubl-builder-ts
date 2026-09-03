@@ -3,6 +3,7 @@ import {
   DocumentTypeCode,
   DocumentVersion,
   myInvois,
+  MyInvoisValidationError,
   otherTaxScheme,
   TaxCategoryCode,
 } from '../../src/profiles/myinvois';
@@ -32,9 +33,11 @@ describe('MyInvois profile', () => {
     expect(invoice.getXml(false, true)).toContain('<cbc:InvoiceTypeCode listVersionID="1.0">01</cbc:InvoiceTypeCode>');
   });
 
-  it('finalize is a no-op at document version 1.0', () => {
-    // v1.1 enables signature validation; the structure is identical.
-    expect(() => myInvois.finalize!(new Invoice('INV-1'))).not.toThrow();
+  it('finalize validates rather than signing at document version 1.0', () => {
+    // It used to be a no-op. It now runs the offline checks, which is the only
+    // thing there is to do at v1.0 — v1.1 enables signature validation, and
+    // the structure is identical. A bare Invoice fails several of them.
+    expect(() => myInvois.finalize!(new Invoice('INV-1'))).toThrow(MyInvoisValidationError);
   });
 
   it('builds a fresh tax scheme per call', () => {

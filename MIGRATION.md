@@ -460,3 +460,72 @@ real thing in `sig/SignatureExtensionContent`.
 Web Crypto helper rather than anything Colombian, and core signing importing
 from a country profile would have been backwards. It was not exported from any
 barrel, so no import path changes.
+
+# Migrating to 0.4.0
+
+## `myInvois.finalize` now validates, and throws
+
+It used to be a no-op at document version 1.0. It now runs the offline MyInvois
+checks and throws `MyInvoisValidationError` if the document breaks any of them.
+`myInvois.withSigner(...).finalize` validates before signing, for the same
+reason the digest is computed last: a document edited after signing invalidates
+its own signature.
+
+**Who is affected:** anyone calling `finalize`. A document that was silently
+accepted by this library and then rejected by LHDN will now fail earlier, in
+your own process. That is the point of the change, but it is a behaviour change
+rather than an addition.
+
+**If you need the old behaviour**, do not call `finalize` — validation is the
+only thing it does at version 1.0. When signing, call `signInvoice` directly;
+it is exported for exactly this.
+
+**To inspect without throwing**, use `validateInvoice(invoice)`, which returns
+the same `ValidationIssue[]`.
+
+The rules and their evidence are documented in `src/profiles/myinvois/validate.ts`.
+Two of them — `CV317` and the consolidated classification code — were learned by
+having LHDN's preprod API reject a real submission, not from documentation.
+
+## `validateInvoice` returns a result, not an array
+
+```ts
+// before
+const issues = validateInvoice(invoice);
+if (issues.length > 0) { /* … */ }
+
+// now
+const { valid, issues } = validateInvoice(invoice);
+```
+
+`myInvois.validate(invoice)` is the same thing reached from the profile.
+
+The shape mirrors LHDN's own response, which reports a `status` alongside its
+`validationSteps`. That lets a caller handle the offline verdict and the API's
+with one code path instead of unwrapping an array in one place and a status
+object in the other. `valid` is derivable from `issues.length`; the redundancy
+is deliberate.
+
+## Required elements are checked
+
+`MYI004` reports an element MyInvois requires that the document does not have.
+UBL marks most of them optional, so nothing else in the toolchain catches it —
+a document with no issue date, no tax total, or a party with no address is
+schema-valid.
+
+**Who is affected:** anyone whose document was incomplete. It was already going
+to be rejected by LHDN; it now fails in your own process instead.
+
+A rule is admitted only if the element appears in both documents this repo knows
+LHDN accepted. Only the fields common to every Invoice type are checked — the
+per-type rules for credit, debit, refund and self-billed documents are not,
+because this project has submitted none of them.
+
+## Every issue is reported at once
+
+`MyInvoisValidationError.issues` carries the full set rather than the first
+failure. This mirrors a lesson from the live API: LHDN reported an `ERR205`
+against the buyer's `PartyIdentification` for a document whose actual faults
+were in the postal address and the item classification code. The element its
+`propertyPath` named was never wrong, and fixing one reported error at a time
+did not converge. Present the whole set to whoever is fixing the document.

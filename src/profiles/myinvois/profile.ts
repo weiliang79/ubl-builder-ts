@@ -1,6 +1,7 @@
 import { Invoice } from '../../documents';
 import { Profile } from '../Profile';
 import { SigningOptions, signInvoice } from './sign';
+import { assertValidInvoice, ValidationResult, validateInvoice } from './validate';
 
 /**
  * MyInvois adds one member to {@link Profile}.
@@ -12,6 +13,7 @@ import { SigningOptions, signInvoice } from './sign';
  */
 export interface MyInvoisProfile extends Profile {
   withSigner(options: SigningOptions): Profile;
+  validate(document: Invoice): ValidationResult;
 }
 
 /**
@@ -61,14 +63,39 @@ export const myInvois = {
   },
 
   /**
-   * A no-op at document version 1.0, which LHDN accepts unsigned.
+   * Check the document against the MyInvois rules decidable offline, without
+   * throwing.
    *
-   * Version 1.1 enables signature validation and needs XAdES. Reach for
-   * {@link MyInvoisProfile.withSigner} for that: signing needs a key and a
-   * certificate, which `Profile` deliberately has nowhere to put.
+   * ```ts
+   * const { valid, issues } = myInvois.validate(invoice);
+   * ```
+   *
+   * The result is shaped like LHDN's own response — a verdict alongside the
+   * detail — so a caller can treat the offline check and the API's answer the
+   * same way. Reach for {@link myInvois.finalize} instead when an invalid
+   * document should stop the build.
    */
-  finalize(_document: Invoice): void {
-    return;
+  validate(document: Invoice): ValidationResult {
+    return validateInvoice(document);
+  },
+
+  /**
+   * Check the document against the MyInvois rules decidable offline.
+   *
+   * Throws {@link MyInvoisValidationError}, which carries every issue found
+   * rather than the first — see `validate.ts` for why reporting them one at a
+   * time is actively misleading.
+   *
+   * There is no signing here. Version 1.0 is what LHDN accepts unsigned;
+   * version 1.1 enables signature validation and needs XAdES, so reach for
+   * {@link MyInvoisProfile.withSigner}, which needs a key and a certificate
+   * that `Profile` deliberately has nowhere to put.
+   *
+   * To build a document without this check, simply do not call `finalize` —
+   * it is the only thing the hook does at version 1.0.
+   */
+  finalize(document: Invoice): void {
+    assertValidInvoice(document);
   },
 
   /**
@@ -81,15 +108,22 @@ export const myInvois = {
    * await signing.finalize(invoice);
    * ```
    *
-   * `finalize` bumps `listVersionID` to 1.1, declares the signature
-   * namespaces, and attaches the XAdES signature — in that order, because the
-   * digest covers the finished document. See `sign.ts`.
+   * `finalize` validates, then bumps `listVersionID` to 1.1, declares the
+   * signature namespaces, and attaches the XAdES signature — in that order,
+   * because the digest covers the finished document. See `sign.ts`.
+   *
+   * Validation runs FIRST, and it has to: the signature covers the document,
+   * so editing a rejected document after signing invalidates the signature,
+   * and signing an invalid document wastes a call to whatever holds the key.
+   * A caller who needs to sign without this check can call `signInvoice`
+   * directly — it is exported for exactly that.
    */
   withSigner(options: SigningOptions): Profile {
     return {
       id: 'myinvois@1.1',
       defaults: myInvois.defaults,
       finalize: async (document: Invoice): Promise<void> => {
+        assertValidInvoice(document);
         await signInvoice(document, options);
       },
     };

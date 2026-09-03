@@ -157,10 +157,81 @@ Signing needs a certificate from an
 — an organisational one, and self-signed certificates are rejected in the
 sandbox as well as in production.
 
+## Validation — MyInvois rules checked offline
+
+`myInvois.finalize` checks the document against the MyInvois rules that are
+decidable without contacting LHDN, and throws `MyInvoisValidationError` with
+**every** issue it found:
+
+```ts
+import { myInvois, MyInvoisValidationError } from '@weiliang79/ubl-builder/profiles/myinvois';
+
+myInvois.defaults(invoice);
+// …build the invoice…
+try {
+  myInvois.finalize(invoice);
+} catch (error) {
+  if (error instanceof MyInvoisValidationError) {
+    error.issues.forEach((issue) => console.error(issue.code, issue.path, issue.message));
+  }
+}
+```
+
+`myInvois.validate(invoice)` answers the same question without throwing:
+
+```ts
+const { valid, issues } = myInvois.validate(invoice);
+```
+
+The result is shaped like LHDN's own response — a verdict alongside the detail —
+so the offline check and the API's answer can be handled by the same code.
+
+Three classes of rejection are covered, all of which otherwise cost a round trip
+to LHDN:
+
+- **A missing required element** (`MYI004`). UBL marks most of MyInvois's
+  mandatory fields optional, so the type system cannot help: a document with no
+  issue date, no tax total, or a party with no address compiles and serialises
+  happily. This also catches the library's one silent failure — a plain object
+  passed where a component instance is required emits an empty element rather
+  than raising, and an empty element has no value to find.
+- **A dropped attribute** (`MYI001`). Scalar params accept a bare `string` as
+  shorthand for the `Udt*` classes, and a bare string carries no attributes — so
+  `taxAmount: '0.00'` emits an amount with no `currencyID`. That is schema-valid
+  and rejected on submission. The same applies to `schemeID`, `listID` and
+  `listVersionID`.
+- **An incoherent consolidated e-Invoice** (`CV317`, `MYI003`). Using the General
+  Public TIN as the buyer silently reclassifies the document, and the buyer's
+  state code and every line's classification code must change with it.
+
+The rule of admission is that a check must be decidable from the document alone
+and must never reject a document LHDN accepts — a validator that blocks valid
+invoices is worse than none, since the only workaround is to stop using it.
+A presence rule is admitted only if the element appears in **both** documents
+this repo knows LHDN accepted — the production fixture and LHDN's own published
+signed sample — which is how `cbc:ElectronicMail` was ruled out. Appearing in
+both is still not proof of being required, so `cbc:PostalZone`,
+`cbc:TaxCurrencyCode`, `cbc:InvoicedQuantity` and its `unitCode` are excluded
+too: LHDN models each as an optional field in its own right.
+
+Only the fields every Invoice type needs are checked. Credit, debit and refund
+notes also require `cac:BillingReference` naming the original, and the
+self-billed types (11–14) swap which party carries what; neither is checked,
+because this project has submitted neither. Anything needing LHDN's own state (whether a TIN
+exists, whether it matches your credentials, whether a submission duplicates an
+earlier one) is left to the API. Monetary totals are deliberately not checked;
+see the BR-CO-13 note above.
+
+To skip validation, do not call `finalize` — at version 1.0 it is the only thing
+the hook does. When signing, validation runs before the signature is attached;
+call `signInvoice` directly to bypass it.
+
 ## Not implemented
 
-- **Profile constraints.** MyInvois requires fields UBL marks optional; the
-  library does not yet enforce that, and LHDN rejects them on submission.
+- **Profile constraints beyond the offline rules above.** Anything needing
+  LHDN's own state — whether a TIN exists, whether it matches the credentials
+  behind a submission, whether a referenced document exists — is left to the
+  API.
 
 The library never computes or validates monetary totals — see the BR-CO-13
 note above for why.
