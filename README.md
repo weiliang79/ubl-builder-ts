@@ -157,10 +157,58 @@ Signing needs a certificate from an
 — an organisational one, and self-signed certificates are rejected in the
 sandbox as well as in production.
 
+## Validation — MyInvois rules checked offline
+
+`myInvois.finalize` checks the document against the MyInvois rules that are
+decidable without contacting LHDN, and throws `MyInvoisValidationError` with
+**every** issue it found:
+
+```ts
+import { myInvois, MyInvoisValidationError } from '@weiliang79/ubl-builder/profiles/myinvois';
+
+myInvois.defaults(invoice);
+// …build the invoice…
+try {
+  myInvois.finalize(invoice);
+} catch (error) {
+  if (error instanceof MyInvoisValidationError) {
+    error.issues.forEach((issue) => console.error(issue.code, issue.path, issue.message));
+  }
+}
+```
+
+`validateInvoice(invoice)` returns the same issues without throwing, if you
+would rather not use exceptions for control flow.
+
+Two classes of rejection are covered, both of which otherwise cost a round trip
+to LHDN:
+
+- **A dropped attribute.** Scalar params accept a bare `string` as shorthand for
+  the `Udt*` classes, and a bare string carries no attributes — so
+  `taxAmount: '0.00'` emits an amount with no `currencyID`. That is schema-valid
+  and rejected on submission. The same applies to `schemeID`, `listID`,
+  `unitCode` and `listVersionID`.
+- **An incoherent consolidated e-Invoice.** Using the General Public TIN as the
+  buyer silently reclassifies the document, and the buyer's state code and every
+  line's classification code must change with it.
+
+The rule of admission is that a check must be decidable from the document alone
+and must never reject a document LHDN accepts — a validator that blocks valid
+invoices is worse than none. Anything needing LHDN's own state (whether a TIN
+exists, whether it matches your credentials, whether a submission duplicates an
+earlier one) is left to the API. Monetary totals are deliberately not checked;
+see the BR-CO-13 note above.
+
+To skip validation, do not call `finalize` — at version 1.0 it is the only thing
+the hook does. When signing, validation runs before the signature is attached;
+call `signInvoice` directly to bypass it.
+
 ## Not implemented
 
-- **Profile constraints.** MyInvois requires fields UBL marks optional; the
-  library does not yet enforce that, and LHDN rejects them on submission.
+- **Profile constraints beyond the offline rules above.** Anything needing
+  LHDN's own state — whether a TIN exists, whether it matches the credentials
+  behind a submission, whether a referenced document exists — is left to the
+  API.
 
 The library never computes or validates monetary totals — see the BR-CO-13
 note above for why.
