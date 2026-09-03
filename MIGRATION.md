@@ -529,3 +529,30 @@ against the buyer's `PartyIdentification` for a document whose actual faults
 were in the postal address and the item classification code. The element its
 `propertyPath` named was never wrong, and fixing one reported error at a time
 did not converge. Present the whole set to whoever is fixing the document.
+
+# Migrating to 0.4.1
+
+## The `CV317` rule is removed — it rejected valid documents
+
+0.4.0 reported `CV317` when a document's buyer was the General Public TIN and
+`cbc:CountrySubentityCode` was not `17`. LHDN does not have that rule. It
+accepted a consolidated invoice carrying the General Public TIN, state code
+`14` and classification `004`, returning `Step04-Code Field Validator: Valid` —
+the step that emits `CV317`.
+
+**Who is affected:** anyone submitting a consolidated e-Invoice with a real
+buyer address. Under 0.4.0, `myInvois.finalize` threw on a document LHDN would
+have accepted, and `validate` reported it invalid. Upgrade if you build
+consolidated documents.
+
+The reverse half of the rule — state code `17` on a non-consolidated Malaysian
+address — is removed too. It was never observed, only inferred from the wording
+of LHDN's error message, and that message described a rule LHDN does not appear
+to enforce.
+
+`MYI003` is unchanged: a consolidated e-Invoice's lines must be classified
+`004`. That is the half the evidence supports, and removing the state-code rule
+strengthens it — the classification code is what LHDN actually keys on.
+
+No error code in this library is now borrowed from LHDN. `CV317` was the only
+one, and it named a rule that does not exist.

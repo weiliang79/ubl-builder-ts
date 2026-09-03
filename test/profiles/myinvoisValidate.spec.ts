@@ -39,10 +39,17 @@ import {
 /**
  * The offline MyInvois rules.
  *
- * Nothing here is inferred from documentation. `CV317` and the consolidated
- * classification code were learned by having LHDN's preprod API reject a real
- * submission on 2026-09-03, and the shapes pinned as passing are the ones it
- * then accepted. The presence rules are admitted only if the element appears in
+ * Nothing here is inferred from documentation. The consolidated classification
+ * rule was learned by having LHDN's preprod API reject a real submission, and
+ * the shapes pinned as passing are ones it accepted.
+ *
+ * A second rule was learned the same way and was WRONG. 0.4.0 required buyer
+ * state code 17 on a consolidated document, reported as LHDN's own `CV317`.
+ * The rejection it came from differed from the accepted document in two places
+ * at once, and the wrong one was credited; LHDN later accepted state code 14 on
+ * a consolidated invoice outright. It is removed, and the lesson is in the
+ * tests below: a rule earns its place from a submission that changed ONE
+ * thing. The presence rules are admitted only if the element appears in
  * BOTH documents this repo knows LHDN accepted.
  *
  * The most important tests in this file are the first three. A validator's real
@@ -185,7 +192,7 @@ describe('MyInvois offline validation', () => {
 
   describe('the result', () => {
     it('reports a verdict alongside the detail, like LHDN does', () => {
-      const result = validateInvoice(consolidated({ state: '14' }));
+      const result = validateInvoice(consolidated({ classification: '020' }));
 
       expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(1);
@@ -299,25 +306,22 @@ describe('MyInvois offline validation', () => {
   describe('consolidated e-Invoice coherence', () => {
     // Nothing in the document declares it is consolidated: the General Public
     // buyer TIN decides it, and other fields must follow.
-    it('requires state code 17 when the buyer is General Public', () => {
-      const [issue, ...rest] = validateInvoice(consolidated({ state: '14' })).issues;
-
-      expect(issue.code).toBe('CV317');
-      expect(issue.expected).toBe('17');
-      expect(issue.actual).toBe('14');
-      expect(issue.path).toBe(
-        '/Invoice/cac:AccountingCustomerParty/cac:Party/cac:PostalAddress/cbc:CountrySubentityCode',
-      );
-      expect(rest).toStrictEqual([]);
+    it('does NOT require state code 17, whatever the buyer TIN is', () => {
+      // 0.4.0 reported CV317 here, and LHDN disagrees. It accepted a document
+      // with the General Public TIN, state code 14 and classification 004 —
+      // `Step04-Code Field Validator: Valid`, which is the step that emits
+      // CV317. The submitted bytes are on disk outside this repo, at
+      // ubl-builder-test/oracle-output/260903182627-3.xml; they are not copied
+      // in because they carry a real TIN and NRIC.
+      expect(validateInvoice(consolidated({ state: '14' }))).toStrictEqual({ valid: true, issues: [] });
     });
 
-    it('rejects state code 17 on an ordinary Malaysian address', () => {
-      // The other half of LHDN's rule: "17 should be used for Consolidated
-      // e-Invoice and non-Malaysian address only".
-      expect(codes(ordinary({ state: '17' }))).toStrictEqual(['CV317']);
-    });
-
-    it('allows state code 17 on a non-Malaysian address', () => {
+    it('does not care about the state code on an ordinary invoice either', () => {
+      // The reverse half of the removed rule — 17 on a Malaysian address that
+      // is not consolidated — was never observed, only inferred from the
+      // wording of LHDN's message. That message described a rule LHDN does not
+      // appear to have.
+      expect(validateInvoice(ordinary({ state: '17' })).valid).toBe(true);
       expect(validateInvoice(ordinary({ state: '17', country: 'SGP' })).valid).toBe(true);
     });
 
@@ -400,25 +404,26 @@ describe('MyInvois offline validation', () => {
       // postal address and the classification code — a field that was never
       // wrong. Fixing one reported error at a time converges slowly or not at
       // all, so a caller gets the whole set.
-      const invoice = consolidated({ state: '14', classification: '020', lines: 2 });
+      const invoice = consolidated({ classification: '020', lines: 2 });
+      invoice.setInvoiceTypeCode(DocumentTypeCode.Invoice);
 
-      expect(codes(invoice)).toStrictEqual(['CV317', 'MYI003', 'MYI003']);
+      expect(codes(invoice)).toStrictEqual(['MYI001', 'MYI003', 'MYI003']);
     });
 
     it('carries the issues on the thrown error', () => {
       let caught: MyInvoisValidationError | undefined;
       try {
-        myInvois.finalize!(consolidated({ state: '14' }));
+        myInvois.finalize!(consolidated({ classification: '020' }));
       } catch (error) {
         caught = error as MyInvoisValidationError;
       }
 
       expect(caught).toBeInstanceOf(MyInvoisValidationError);
-      expect(caught?.issues.map((issue) => issue.code)).toStrictEqual(['CV317']);
+      expect(caught?.issues.map((issue) => issue.code)).toStrictEqual(['MYI003']);
       // The message alone has to be usable, since that is what an uncaught
       // throw prints.
-      expect(caught?.message).toContain('CV317');
-      expect(caught?.message).toContain('cbc:CountrySubentityCode');
+      expect(caught?.message).toContain('MYI003');
+      expect(caught?.message).toContain('cbc:ItemClassificationCode');
     });
   });
 });
