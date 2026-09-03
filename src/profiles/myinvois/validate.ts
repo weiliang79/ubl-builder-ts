@@ -49,8 +49,8 @@ export const CONSOLIDATED_CLASSIFICATION_CODE = '004';
 /** `cbc:CountrySubentityCode` meaning "Not Applicable". */
 export const NOT_APPLICABLE_STATE_CODE = '17';
 
-/** ISO 3166-1 alpha-3 for Malaysia — `MYS`, not `MY`. */
-export const MALAYSIA = 'MYS';
+/** ISO 3166-1 alpha-3 for Malaysia — `MYS`, not `MY`. Internal: too generic a name to export. */
+const MALAYSIA = 'MYS';
 
 /** One rule violation, located in the document. */
 export interface ValidationIssue {
@@ -132,6 +132,12 @@ function locate(root: XmlNode): Located[] {
  * could be a TIN or an NRIC. That criterion is what keeps this table free of
  * false positives, since a document missing one of these cannot be correct
  * under any reading.
+ *
+ * `cbc:InvoicedQuantity/@unitCode` was a candidate and is deliberately absent.
+ * A quantity with no unit reads as ambiguous, but LHDN models Measurement as an
+ * optional field in its own right, so a document omitting it is plausibly
+ * accepted — and this table may not reject anything LHDN accepts. An observed
+ * rejection would be enough to add it; the reasoning is not.
  */
 const REQUIRED_ATTRIBUTES: ReadonlyArray<{
   readonly matches: (element: Located, parent: Located | undefined) => boolean;
@@ -143,11 +149,6 @@ const REQUIRED_ATTRIBUTES: ReadonlyArray<{
     matches: (element) => local(element.node.name).endsWith('Amount'),
     attributes: ['currencyID'],
     why: 'an amount without a currency',
-  },
-  {
-    matches: (element) => local(element.node.name) === 'InvoicedQuantity',
-    attributes: ['unitCode'],
-    why: 'a quantity without a unit of measure',
   },
   {
     matches: (element) => local(element.node.name) === 'ItemClassificationCode',
@@ -191,7 +192,7 @@ function at(located: readonly Located[], ...names: readonly string[]): Located |
 }
 
 /** Every element with this local name, anywhere in the document. */
-function every(located: readonly Located[], name: string): Located[] {
+function allNamed(located: readonly Located[], name: string): Located[] {
   return located.filter((entry) => local(entry.node.name) === name);
 }
 
@@ -281,11 +282,13 @@ export function validateInvoice(invoice: Invoice): ValidationIssue[] {
     'IdentificationCode',
   );
   const state = textOf(buyerState);
+  const statePath =
+    buyerState?.path ?? '/Invoice/cac:AccountingCustomerParty/cac:Party/cac:PostalAddress/cbc:CountrySubentityCode';
 
   if (consolidated && state !== NOT_APPLICABLE_STATE_CODE) {
     issues.push({
       code: 'CV317',
-      path: buyerState?.path ?? '/Invoice/cac:AccountingCustomerParty/cac:Party/cac:PostalAddress/cbc:CountrySubentityCode',
+      path: statePath,
       message:
         'a consolidated e-Invoice (General Public buyer) must use state code 17. The rest of the buyer address should be "NA" too.',
       expected: NOT_APPLICABLE_STATE_CODE,
@@ -299,14 +302,14 @@ export function validateInvoice(invoice: Invoice): ValidationIssue[] {
     // is why this is guarded on the country code.
     issues.push({
       code: 'CV317',
-      path: buyerState?.path ?? '',
+      path: statePath,
       message:
         'state code 17 is only for a consolidated e-Invoice or a non-Malaysian address. Use the buyer’s real state code.',
       actual: state,
     });
   }
 
-  every(located, 'ItemClassificationCode').forEach((element) => {
+  allNamed(located, 'ItemClassificationCode').forEach((element) => {
     const code = textOf(element);
     if (consolidated && code !== CONSOLIDATED_CLASSIFICATION_CODE) {
       issues.push({

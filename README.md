@@ -186,15 +186,18 @@ to LHDN:
 - **A dropped attribute.** Scalar params accept a bare `string` as shorthand for
   the `Udt*` classes, and a bare string carries no attributes — so
   `taxAmount: '0.00'` emits an amount with no `currencyID`. That is schema-valid
-  and rejected on submission. The same applies to `schemeID`, `listID`,
-  `unitCode` and `listVersionID`.
+  and rejected on submission. The same applies to `schemeID`, `listID` and
+  `listVersionID`.
 - **An incoherent consolidated e-Invoice.** Using the General Public TIN as the
   buyer silently reclassifies the document, and the buyer's state code and every
   line's classification code must change with it.
 
 The rule of admission is that a check must be decidable from the document alone
 and must never reject a document LHDN accepts — a validator that blocks valid
-invoices is worse than none. Anything needing LHDN's own state (whether a TIN
+invoices is worse than none, since the only workaround is to stop using it.
+`unitCode` on `cbc:InvoicedQuantity` is the rule that criterion excludes: a
+quantity with no unit reads as ambiguous, but LHDN models Measurement as an
+optional field, so omitting it is plausibly accepted. Anything needing LHDN's own state (whether a TIN
 exists, whether it matches your credentials, whether a submission duplicates an
 earlier one) is left to the API. Monetary totals are deliberately not checked;
 see the BR-CO-13 note above.

@@ -136,6 +136,16 @@ describe('MyInvois offline validation', () => {
       expect(validateInvoice(Invoice.fromXml(readFileSync(FIXTURE, 'utf8')))).toStrictEqual([]);
     });
 
+    it("passes LHDN's own published signed reference document", () => {
+      // The strongest false-positive guard available offline, and the only one
+      // this project did not author: a complete, signed, real document written
+      // by the party doing the validating. It also exercises a shape nothing
+      // else here does — a signed document carries ext:UBLExtensions and a
+      // ds:Signature tree, and no rule may fire on any of it.
+      const signed = join(__dirname, '..', 'fixtures', 'lhdn', 'one-doc-signed.xml');
+      expect(validateInvoice(Invoice.fromXml(readFileSync(signed, 'utf8')))).toStrictEqual([]);
+    });
+
     it('passes an ordinary invoice', () => {
       expect(validateInvoice(ordinary())).toStrictEqual([]);
     });

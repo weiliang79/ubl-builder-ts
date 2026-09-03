@@ -5,7 +5,6 @@ export {
   assertValidInvoice,
   CONSOLIDATED_CLASSIFICATION_CODE,
   GENERAL_PUBLIC_TIN,
-  MALAYSIA,
   MyInvoisValidationError,
   NOT_APPLICABLE_STATE_CODE,
   ValidationIssue,
