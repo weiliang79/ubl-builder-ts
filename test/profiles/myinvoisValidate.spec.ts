@@ -336,7 +336,11 @@ describe('MyInvois offline validation', () => {
       ]);
     });
 
-    it('rejects classification 004 on an ordinary invoice', () => {
+    it('rejects classification 004 on an ordinary invoice — the one unobserved rule', () => {
+      // Kept, but flagged: unlike the branch above, LHDN has never been seen to
+      // reject this. It rests on the code list and on the constraint as stated,
+      // which is the same standing the removed CV317 reverse half had. If a
+      // valid document is ever refused, suspect this rule first.
       expect(codes(ordinary({ classification: '004' }))).toStrictEqual(['MYI003']);
     });
   });

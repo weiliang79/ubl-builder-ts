@@ -46,7 +46,14 @@ export const GENERAL_PUBLIC_TIN = 'EI00000000010';
 /** `cbc:ItemClassificationCode` for a consolidated e-Invoice line. */
 export const CONSOLIDATED_CLASSIFICATION_CODE = '004';
 
-/** `cbc:CountrySubentityCode` meaning "Not Applicable". */
+/**
+ * `cbc:CountrySubentityCode` meaning "Not Applicable".
+ *
+ * Informational only — nothing in this file requires it. 0.4.0 did, on a
+ * consolidated e-Invoice, and LHDN accepts a real state code there instead. It
+ * stays exported because it is a true MyInvois code and removing an export in a
+ * patch release would break callers, not because using it is necessary.
+ */
 export const NOT_APPLICABLE_STATE_CODE = '17';
 
 /** One rule violation, located in the document. */
@@ -445,31 +452,24 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
   //
   // Nothing in the document declares that it is consolidated; supplying the
   // General Public TIN as the buyer is what decides it, and the item
-  // classification code must agree with that choice.
-  //
-  // The buyer's state code is NOT checked, and a rule that checked it was
-  // removed in 0.4.1 as a false positive — see the note on `MYI003`.
-  const consolidated = tinOf(located, 'AccountingCustomerParty') === GENERAL_PUBLIC_TIN;
-
-  // No rule on the buyer's state code. See the note above `MYI003`.
-
-  // Why there is no rule on the buyer's state code, and why this one stands.
+  // classification code must agree with that choice. That classification code
+  // is the ONLY thing checked here — in particular the buyer's state code is
+  // not, and 0.4.0 was wrong to check it.
   //
   // 0.4.0 reported `CV317` when a consolidated document's buyer state code was
-  // not 17. That was a FALSE POSITIVE and is removed. LHDN accepted a document
-  // with the General Public TIN, state code 14 and classification 004 —
-  // `Step04-Code Field Validator: Valid`, the very step that emits `CV317`.
+  // not 17. LHDN accepted such a document — General Public TIN, state code 14,
+  // classification 004, `Step04-Code Field Validator: Valid`, which is the step
+  // that emits `CV317`. The rule named something LHDN does not enforce.
   //
-  // The mistake is worth keeping in view because the shape recurs. The rule
-  // came from a real `CV317` rejection, but that submission differed from the
-  // accepted one in TWO places at once — the buyer address AND the
-  // classification code — and the wrong one was credited. `ERR205` in the same
-  // response named a `PartyIdentification` that was never at fault, for the
-  // same reason: an error's `propertyPath` says where the failing rule was
-  // reading, not what is wrong.
-  //
-  // The classification code is the discriminator, and it is the half that
-  // survives isolation.
+  // The mistake is kept in view because its shape recurs. The rule came from a
+  // real `CV317` rejection, but that submission differed from the accepted one
+  // in TWO places at once — the buyer address AND the classification code — and
+  // the wrong one was credited. `ERR205` in the same response named a
+  // `PartyIdentification` that was never at fault, for the same reason: an
+  // error's `propertyPath` says where the failing rule was reading, not what is
+  // wrong. So a rule earns its place from a submission that changed ONE thing.
+  const consolidated = tinOf(located, 'AccountingCustomerParty') === GENERAL_PUBLIC_TIN;
+
   allNamed(located, 'ItemClassificationCode').forEach((element) => {
     const code = textOf(element);
     if (consolidated && code !== CONSOLIDATED_CLASSIFICATION_CODE) {
@@ -481,6 +481,16 @@ export function validateInvoice(invoice: Invoice): ValidationResult {
         actual: code,
       });
     }
+    // NOT observed, unlike the branch above. That one is isolated: with the
+    // state code now known to be irrelevant, the classification is the only
+    // thing that separated the rejected 2026-09-03 submission from the accepted
+    // one. This direction rests on the code list defining 004 as "Consolidated
+    // e-Invoice" and on the user stating the constraint — documentation, not a
+    // rejection. It is exactly the standing the removed `CV317` reverse half
+    // had, and it is kept only because misusing 004 on a named-buyer invoice is
+    // implausible as an accident. One deliberate submission would settle it;
+    // until then, this is the first rule to suspect if a valid document is
+    // refused.
     if (!consolidated && code === CONSOLIDATED_CLASSIFICATION_CODE) {
       issues.push({
         code: 'MYI003',
