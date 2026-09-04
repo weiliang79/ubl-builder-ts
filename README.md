@@ -200,13 +200,19 @@ to LHDN:
   `taxAmount: '0.00'` emits an amount with no `currencyID`. That is schema-valid
   and rejected on submission. The same applies to `schemeID`, `listID` and
   `listVersionID`.
-- **An incoherent consolidated e-Invoice** (`CV317`, `MYI003`). Using the General
-  Public TIN as the buyer silently reclassifies the document, and the buyer's
-  state code and every line's classification code must change with it.
+- **An incoherent consolidated e-Invoice** (`MYI003`). Using the General Public
+  TIN as the buyer silently reclassifies the document, and every line's
+  classification code must change with it.
 
 The rule of admission is that a check must be decidable from the document alone
 and must never reject a document LHDN accepts — a validator that blocks valid
 invoices is worse than none, since the only workaround is to stop using it.
+0.4.0 also required buyer state code `17` on a consolidated document. **That was
+a false positive and is removed in 0.4.1** — LHDN accepts state code `14` there.
+The rule came from a real rejection whose submission differed from the accepted
+one in two places at once, and the wrong one was credited. A rule now has to come
+from a submission that changed a single thing.
+
 A presence rule is admitted only if the element appears in **both** documents
 this repo knows LHDN accepted — the production fixture and LHDN's own published
 signed sample — which is how `cbc:ElectronicMail` was ruled out. Appearing in
